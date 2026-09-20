@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050403">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="الغرفة 13">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>الغرفة 13</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700&family=Rakkas&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Amiri',serif;color:#d9d0bd;touch-action:none;user-select:none;-webkit-user-select:none}
+#game{position:fixed;inset:0;display:block;touch-action:none}
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:30;background:radial-gradient(ellipse at center,transparent 42%,rgba(0,0,0,.62) 100%)}
+#grain{position:fixed;inset:-120px;pointer-events:none;z-index:31;opacity:.055;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='300' height='300' filter='url(%23n)' opacity='0.7'/></svg>");animation:grain .8s steps(4) infinite}
+@keyframes grain{0%{transform:translate(0,0)}25%{transform:translate(-25px,35px)}50%{transform:translate(30px,-20px)}75%{transform:translate(-20px,-30px)}100%{transform:translate(0,0)}}
+#letterbox .bar{position:fixed;left:0;width:100%;height:0;background:#000;z-index:35;transition:height 1s ease}
+#letterbox .bar.top{top:0}#letterbox .bar.bottom{bottom:0}
+#letterbox.on .bar{height:11vh}
+#objective{position:fixed;top:20px;right:24px;z-index:32;font-size:19px;color:#c4bba6;border-right:3px solid #6e1d18;padding:4px 14px 4px 20px;max-width:340px;text-align:right;opacity:0;transition:opacity .8s;background:rgba(0,0,0,.35)}
+#objective.show{opacity:1}
+#subtitle{position:fixed;bottom:13%;left:0;width:100%;text-align:center;z-index:32;font-size:27px;color:#e6dcc6;text-shadow:0 2px 10px #000;opacity:0;transition:opacity .3s;pointer-events:none;padding:0 12vw}
+#subtitle.show{opacity:1}
+#prompt{position:fixed;bottom:26%;left:0;width:100%;text-align:center;z-index:32;opacity:0;transition:opacity .15s;pointer-events:none;font-size:22px}
+#prompt.show{opacity:1}
+#prompt .key{display:inline-block;border:1.5px solid #9c9280;border-radius:4px;padding:0 9px;margin-left:10px;font-weight:700;color:#c9bfa8;background:rgba(0,0,0,.5);vertical-align:middle}
+#crosshair{position:fixed;top:50%;left:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgba(230,220,200,.55);z-index:32}
+#floorDisplay{position:fixed;top:13vh;width:100%;text-align:center;z-index:36;font-family:'Rakkas';font-size:76px;color:#cfc5ac;text-shadow:0 3px 14px #000;opacity:0;transition:opacity .3s;pointer-events:none}
+#floorDisplay.show{opacity:1}
+#floorDisplay.red{color:#c22a20}
+#elevatorPanel{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
+#elevatorPanel .panelBox{background:#17161a;border:1px solid #3a3730;border-top:3px solid #585142;padding:26px 30px;min-width:280px;box-shadow:0 20px 60px #000}
+#elevatorPanel .panelTitle{text-align:center;font-size:24px;color:#a99f88;margin-bottom:16px}
+#btnGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;justify-items:center}
+#btnGrid .ebtn{width:64px;height:64px;border-radius:50%;background:#232019;border:1px solid #4a4438;color:#b3a98f;font-family:'Amiri';font-size:26px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .06s}
+#btnGrid .ebtn:active{transform:scale(.9)}
+#btnGrid .ebtn.go{border-color:#8a6f3a;color:#d8c48a}
+#btnGrid .ebtn.dead{background:#14120e;color:#3c362c;cursor:default;border-color:#262219}
+#btnGrid .ebtn.thirteen{border-color:#7e1f1a;color:#d9402f;font-size:34px;animation:pulse13 1.6s infinite}
+@keyframes pulse13{0%,100%{box-shadow:0 0 0 0 rgba(160,35,25,0)}50%{box-shadow:0 0 18px 2px rgba(160,35,25,.35)}}
+.panelHint{text-align:center;margin-top:16px;color:#6f675a;font-size:17px}
+#panelClose{display:block;margin:14px auto 0;background:none;border:1px solid #4a4438;color:#8d8471;font-family:'Amiri';font-size:18px;padding:4px 22px;cursor:pointer}
+#noteOverlay{position:fixed;inset:0;z-index:48;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.82);cursor:pointer}
+#noteOverlay img{max-height:60vh;max-width:86vw;box-shadow:0 30px 80px #000;border:6px solid #111}
+#noteText{margin-top:20px;font-size:25px;color:#d9d0bd;text-align:center;max-width:86vw;line-height:1.7;padding:0 4vw}
+#noteHint{margin-top:10px;font-size:15px;color:#6f675a}
+#fade{position:fixed;inset:0;background:#000;z-index:60;opacity:1;pointer-events:none;transition:opacity .1s;display:flex;align-items:center;justify-content:center}
+#fadeText{font-size:30px;color:#bfb59d;text-align:center;max-width:80vw;opacity:0;transition:opacity .6s;padding:0 20px}
+#pause{position:fixed;inset:0;z-index:55;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.78);cursor:pointer;text-align:center}
+#pause .big{font-size:38px;margin-bottom:14px}
+#pause .small{font-size:19px;color:#8d8471;line-height:2;padding:0 20px}
+#title{position:fixed;inset:0;z-index:70;background:#050403;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;text-align:center;transition:opacity .9s}
+#titleLogo{width:96px;height:96px;border:1px solid #2c251c;margin-bottom:18px;opacity:.9}
+#title h1{font-family:'Rakkas';font-size:min(110px,15vw);color:#8c211b;font-weight:400;line-height:1.1;letter-spacing:2px}
+#title .tag{font-size:22px;color:#9a917d;margin-top:8px;padding:0 20px}
+#title .controls{margin-top:38px;font-size:17px;color:#776f5e;line-height:2.2;padding:0 20px;max-width:92vw}
+#title .controls b{color:#b3a98f;border:1px solid #4a4438;border-radius:4px;padding:1px 10px;font-weight:400}
+#title .enter{margin-top:40px;font-size:23px;color:#c9bfa8;animation:blink 2.4s infinite;padding:0 20px}
+#title .warn{margin-top:14px;font-size:15px;color:#5c5546;padding:0 20px}
+@keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+#ending{position:fixed;inset:0;z-index:80;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 6vw}
+#ending img{width:84px;height:84px;margin-bottom:20px;opacity:.85}
+#ending h1{font-family:'Rakkas';font-size:min(100px,14vw);color:#8c211b;font-weight:400}
+#ending p{font-size:23px;color:#9a917d;margin-top:16px;line-height:2}
+#ending button{margin-top:44px;background:none;border:1px solid #6e1d18;color:#c9bfa8;font-family:'Amiri';font-size:22px;padding:10px 42px;cursor:pointer}
+#ending button:hover{background:#1a0908}
+#touchUI{display:none}
+body.touch #touchUI{display:block}
+#joyBase{position:fixed;left:26px;bottom:26px;width:120px;height:120px;border-radius:50%;border:1.5px solid rgba(217,208,189,.28);background:rgba(0,0,0,.22);z-index:33;pointer-events:none}
+#joyKnob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(217,208,189,.2);border:1.5px solid rgba(217,208,189,.45)}
+#btnE{position:fixed;right:26px;bottom:38px;width:80px;height:80px;border-radius:50%;background:rgba(30,20,15,.5);border:1.5px solid rgba(200,168,106,.45);color:#d8c48a;font-size:32px;font-family:'Amiri';display:flex;align-items:center;justify-content:center;z-index:33;transition:transform .15s,background .15s}
+#btnE.hot{border-color:#e8c87a;background:rgba(110,70,20,.7);transform:scale(1.16)}
+#btnPause{position:fixed;top:16px;left:16px;width:46px;height:46px;border-radius:8px;background:rgba(0,0,0,.35);border:1px solid rgba(217,208,189,.3);z-index:33;display:flex;align-items:center;justify-content:center;gap:5px}
+#btnPause i{display:block;width:5px;height:18px;background:rgba(217,208,189,.7)}
+@media (max-width:700px){
+ #subtitle{font-size:19px;bottom:19%;padding:0 7vw}
+ #objective{font-size:13px;max-width:58vw;top:12px;right:12px}
+ #prompt{font-size:17px;bottom:30%}
+ #floorDisplay{font-size:52px}
+ #noteText{font-size:20px}
+ #elevatorPanel .ebtn{width:56px;height:56px;font-size:22px}
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="vignette"></div><div id="grain"></div>
+<div id="letterbox"><div class="bar top"></div><div class="bar bottom"></div></div>
+<div id="objective"></div>
+<div id="subtitle"></div>
+<div id="prompt"><span id="promptText"></span><span class="key">E</span></div>
+<div id="crosshair"></div>
+<div id="floorDisplay"></div>
+<div id="elevatorPanel"><div class="panelBox"><div class="panelTitle">لوحة المصعد</div><div id="btnGrid"></div><div class="panelHint" id="panelHint">اختاري الدور</div><button id="panelClose">ابعدِ عن اللوحة</button></div></div>
+<div id="noteOverlay"><img id="noteImg" alt=""><div id="noteText"></div><div id="noteHint">اضغطي E أو المسي الشاشة عشان تقفلي</div></div>
+<div id="fade"><div id="fadeText"></div></div>
+<div id="pause"><div><div class="big">اتوقفتِ</div><div class="small" id="pauseHelp"></div></div></div>
+<div id="touchUI">
+ <div id="joyBase"><div id="joyKnob"></div></div>
+ <div id="btnE">E</div>
+ <div id="btnPause"><i></i><i></i></div>
+</div>
+<div id="title">
+ <img id="titleLogo" alt="الغرفة 13">
+ <h1>الغرفة ١٣</h1>
+ <div class="tag">الفندق مقفول من ١٣ سنة… طب ليه النور لسه شغّال؟</div>
+ <div class="controls" id="titleControls"></div>
+ <div class="enter">— اضغطي في أي مكان عشان تصحي —</div>
+ <div class="warn" id="titleWarn">بس سماعات… والنور مطفي.</div>
+</div>
+<div id="ending"><img id="endLogo" alt=""><h1>FLOOR 13</h1><p>الفندق ده اتقفل من ١٣ سنة.<br>مفيش حد دخل فيه… ومفيش حد خرج.<br>…إلا انتي.</p><button id="again">صحي من أول ما جيتي</button></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   الغرفة ١٣ — كمبيوتر + موبايل، ملف واحد
+   الإصدار الخامس: إصلاح لغز الصورة (كان محتاج تبعدي وترجعي
+   من غير ما يقولك) + إرشاد أوضح في كل المستويات
+   ============================================================ */
+const $=id=>document.getElementById(id);
+const subEl=$('subtitle'),objEl=$('objective'),promptEl=$('prompt'),promptTxt=$('promptText'),
+      fadeEl=$('fade'),fadeTxt=$('fadeText'),floorEl=$('floorDisplay'),panelEl=$('elevatorPanel'),
+      noteEl=$('noteOverlay'),noteImg=$('noteImg'),noteText=$('noteText'),pauseEl=$('pause'),
+      titleEl=$('title'),endEl=$('ending'),lbEl=$('letterbox'),btnGrid=$('btnGrid'),panelHint=$('panelHint'),
+      joyBase=$('joyBase'),joyKnob=$('joyKnob'),btnE=$('btnE'),btnPause=$('btnPause');
+const IS_TOUCH=('ontouchstart'in window)||navigator.maxTouchPoints>0;
+if(IS_TOUCH){ document.body.classList.add('touch');
+  $('titleControls').innerHTML='المسي نصّ الشاشة الشمال = عصا الحركة — اسحبي على اليمين عشان تبصّي — زر <b>E</b> للتفاعل — ادفعي العصا للآخر = جري';
+  $('titleWarn').textContent='الوضع الأفقي أحلى… بس العمودي شغال عادي.';
+}else{
+  $('titleControls').innerHTML='<b>W A S D</b> للحركة &nbsp;•&nbsp; <b>الماوس</b> للنظر &nbsp;•&nbsp; <b>E</b> للتفاعل &nbsp;•&nbsp; <b>Shift</b> للجري';
+}
+
+/* ================== اللوجو والأيقونة ================== */
+function mkCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function makeIconCanvas(){
+  const c=mkCanvas(512,512),x=c.getContext('2d');
+  x.fillStyle='#050403'; x.fillRect(0,0,512,512);
+  x.fillStyle='#241a10'; x.fillRect(96,70,320,420);
+  x.fillStyle='#6e1d18'; x.fillRect(118,92,276,398);
+  x.strokeStyle='rgba(0,0,0,.45)'; x.lineWidth=10;
+  x.strokeRect(152,200,208,100); x.strokeRect(152,330,208,100);
+  x.fillStyle='#c8a86a'; x.fillRect(196,108,120,74);
+  x.fillStyle='#191410'; x.font='bold 58px Georgia'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillText('13',256,148);
+  x.fillStyle='#191410'; x.beginPath(); x.arc(256,368,18,0,7); x.fill();
+  x.fillRect(247,376,18,40);
+  return c;
+}
+function applyIcon(){
+  try{
+    const c=makeIconCanvas(), url=c.toDataURL('image/png');
+    const link=(rel,href,type)=>{ const l=document.createElement('link'); l.rel=rel; l.href=href; if(type)l.type=type; document.head.appendChild(l); return l; };
+    link('icon',url,'image/png'); link('apple-touch-icon',url);
+    const man={ name:'الغرفة 13', short_name:'الغرفة 13', description:'لعبة رعب — الدور ١٣',
+      start_url:location.href.split('#')[0], display:'standalone', orientation:'any',
+      background_color:'#050403', theme_color:'#050403',
+      icons:[{src:url,sizes:'512x512',type:'image/png',purpose:'any'},
+             {src:url,sizes:'192x192',type:'image/png',purpose:'any'},
+             {src:url,sizes:'512x512',type:'image/png',purpose:'maskable'}] };
+    link('manifest','data:application/manifest+json;charset=utf-8,'+encodeURIComponent(JSON.stringify(man)));
+    $('titleLogo').src=url; $('endLogo').src=url;
+  }catch(e){}
+}
+
+/* ================== الصوت (Web Audio كله مولّد) ================== */
+let AC=null,master=null,nbuf=null,droneG=null,droneF=null,humG=null,ringInt=null,heartInt=null,breathInt=null;
+function initAudio(){
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  master=AC.createGain(); master.gain.value=.9; master.connect(AC.destination);
+  const len=AC.sampleRate*2, b=AC.createBuffer(1,len,AC.sampleRate), d=b.getChannelData(0);
+  let last=0; for(let i=0;i<len;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; d[i]=last*3.5; } nbuf=b;
+  const src=AC.createBufferSource(); src.buffer=nbuf; src.loop=true;
+  droneF=AC.createBiquadFilter(); droneF.type='lowpass'; droneF.frequency.value=170;
+  droneG=AC.createGain(); droneG.gain.value=0;
+  src.connect(droneF).connect(droneG).connect(master); src.start();
+  const o=AC.createOscillator(); o.frequency.value=47; const og=AC.createGain(); og.gain.value=.5;
+  o.connect(og).connect(droneG); o.start();
+}
+function setDrone(g,f){ if(!droneG)return; const t=AC.currentTime; droneG.gain.linearRampToValueAtTime(g,t+1.5); droneF.frequency.linearRampToValueAtTime(f,t+1.5); }
+function panNode(p){ if(AC.createStereoPanner){const n=AC.createStereoPanner();n.pan.value=p;return n;} return AC.createGain(); }
+function env(g,t,a,v,d){ g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(v,t+a); g.gain.exponentialRampToValueAtTime(.0001,t+d); }
+function sfxStep(vol=.34,pan=0,muf=1){
+  if(!AC)return; const t=AC.currentTime;
+  const s=AC.createBufferSource(); s.buffer=nbuf; s.playbackRate.value=(0.9+Math.random()*.2)*muf;
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=(360+Math.random()*180)*muf;
+  const g=AC.createGain(); env(g,t,.012,vol,.2+muf*.08);
+  const p=panNode(pan); s.connect(f).connect(g).connect(p).connect(master); s.start(t); s.stop(t+.3);
+  const o=AC.createOscillator(); o.frequency.value=68+Math.random()*24; const og=AC.createGain(); env(og,t,.01,vol*.45,.11);
+  o.connect(og).connect(p); o.start(t); o.stop(t+.14);
+}
+function sfxKnock(vol=1,pan=0){
+  if(!AC)return; const t=AC.currentTime,p=panNode(pan);
+  const o=AC.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(120,t); o.frequency.exponentialRampToValueAtTime(48,t+.18);
+  const g=AC.createGain(); env(g,t,.006,vol,.4); o.connect(g).connect(p).connect(master); o.start(t); o.stop(t+.45);
+  const s=AC.createBufferSource(); s.buffer=nbuf; s.playbackRate.value=1.7;
+  const f=AC.createBiquadFilter(); f.type='bandpass'; f.frequency.value=900;
+  const g2=AC.createGain(); env(g2,t,.004,vol*.35,.12); s.connect(f).connect(g2).connect(p).connect(master); s.start(t); s.stop(t+.15);
+}
+function sfxDing(low=false){
+  if(!AC)return; const t=AC.currentTime, base=low?[493,659]:[987,1318];
+  base.forEach((fr,i)=>{ const o=AC.createOscillator(); o.frequency.value=fr*(low?.97:1);
+    const g=AC.createGain(); g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.22/(i+1),t+.015); g.gain.exponentialRampToValueAtTime(.0001,t+(low?2.2:1.4));
+    o.connect(g).connect(master); o.start(t); o.stop(t+2.4); });
+}
+function sfxClick(){ if(!AC)return; const t=AC.currentTime,o=AC.createOscillator(); o.frequency.value=1900;
+  const g=AC.createGain(); env(g,t,.002,.12,.05); o.connect(g).connect(master); o.start(t); o.stop(t+.07); }
+function sfxTick(strong=false){ if(!AC)return; const t=AC.currentTime,o=AC.createOscillator(); o.frequency.value=strong?1500:1050;
+  const g=AC.createGain(); env(g,t,.002,strong?.2:.09,strong?.09:.05); o.connect(g).connect(master); o.start(t); o.stop(t+.12); }
+function sfxStatic(){ if(!AC)return; const t=AC.currentTime,s=AC.createBufferSource(); s.buffer=nbuf; s.playbackRate.value=3;
+  const f=AC.createBiquadFilter(); f.type='highpass'; f.frequency.value=1200;
+  const g=AC.createGain(); env(g,t,.02,.25,.5); s.connect(f).connect(g).connect(master); s.start(t); s.stop(t+.6); }
+function sfxDoor(){ if(!AC)return; const t=AC.currentTime,s=AC.createBufferSource(); s.buffer=nbuf; s.playbackRate.value=.4;
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=260;
+  const g=AC.createGain(); env(g,t,.08,.5,1.1); s.connect(f).connect(g).connect(master); s.start(t); s.stop(t+1.2);
+  setTimeout(()=>sfxKnock(.25),900); }
+function sfxWhisper(){ if(!AC)return; const t=AC.currentTime,s=AC.createBufferSource(); s.buffer=nbuf; s.playbackRate.value=.8;
+  const f=AC.createBiquadFilter(); f.type='bandpass'; f.Q.value=6; f.frequency.setValueAtTime(1400,t); f.frequency.exponentialRampToValueAtTime(400,t+2.2);
+  const g=AC.createGain(); g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.13,t+.9); g.gain.linearRampToValueAtTime(.0001,t+2.3);
+  s.connect(f).connect(g).connect(master); s.start(t); s.stop(t+2.4); }
+function sfxBreath(){ if(!AC)return; const t=AC.currentTime,s=AC.createBufferSource(); s.buffer=nbuf; s.playbackRate.value=.5;
+  const f=AC.createBiquadFilter(); f.type='bandpass'; f.Q.value=2; f.frequency.value=520;
+  const g=AC.createGain(); g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.09,t+.7); g.gain.linearRampToValueAtTime(.0001,t+1.7);
+  s.connect(f).connect(g).connect(master); s.start(t); s.stop(t+1.8); }
+function sfxHeart(){ if(!AC)return; [0,.22].forEach(dt=>{ const t=AC.currentTime+dt,o=AC.createOscillator(); o.frequency.value=58;
+  const g=AC.createGain(); env(g,t,.01,.5,.18); o.connect(g).connect(master); o.start(t); o.stop(t+.22); }); }
+function startRing(){ stopRing(); if(!AC)return; const burst=()=>{ const t=AC.currentTime;
+  const o1=AC.createOscillator(),o2=AC.createOscillator(); o1.frequency.value=620; o2.frequency.value=832;
+  const g=AC.createGain(); g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.13,t+.05);
+  g.gain.setValueAtTime(.13,t+1.1); g.gain.linearRampToValueAtTime(.0001,t+1.25);
+  const lfo=AC.createOscillator(); lfo.frequency.value=19; const lg=AC.createGain(); lg.gain.value=.09;
+  lfo.connect(lg).connect(g.gain); lfo.start(t); lfo.stop(t+1.3);
+  o1.connect(g); o2.connect(g); g.connect(master); o1.start(t); o2.start(t); o1.stop(t+1.3); o2.stop(t+1.3); };
+  burst(); ringInt=setInterval(burst,2600); }
+function stopRing(){ if(ringInt){clearInterval(ringInt);ringInt=null;} }
+function startHum(){ stopHum(); if(!AC)return; const t=AC.currentTime;
+  const o=AC.createOscillator(); o.type='sawtooth'; o.frequency.value=52;
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=180;
+  humG=AC.createGain(); humG.gain.setValueAtTime(.0001,t); humG.gain.linearRampToValueAtTime(.14,t+1);
+  o.connect(f).connect(humG).connect(master); o.start(); humG._o=o; }
+function stopHum(){ if(humG){ try{humG.gain.linearRampToValueAtTime(.0001,AC.currentTime+.8); const o=humG._o; setTimeout(()=>o.stop(),900);}catch(e){} humG=null; } }
+function startHeart(bpm){ stopHeart(); sfxHeart(); heartInt=setInterval(sfxHeart,60000/bpm); }
+function stopHeart(){ if(heartInt){clearInterval(heartInt);heartInt=null;} }
+function startBreath(){ stopBreath(); breathInt=setInterval(sfxBreath,3400); }
+function stopBreath(){ if(breathInt){clearInterval(breathInt);breathInt=null;} }
+function stopLoops(){ stopRing(); stopHum(); stopHeart(); stopBreath(); }
+function speakAr(t){ try{ if(!('speechSynthesis' in window))return; const u=new SpeechSynthesisUtterance(t);
+  u.lang='ar-EG'; u.rate=.85; u.pitch=1.05; const v=speechSynthesis.getVoices().find(v=>/^ar/i.test(v.lang)); if(v)u.voice=v;
+  speechSynthesis.speak(u); }catch(e){} }
+
+/* ================== خامات مرسومة بالـ canvas ================== */
+function tx(c,rx=1,ry=1){ const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rx,ry); t.encoding=THREE.sRGBEncoding; t.anisotropy=8; return t; }
+function texWall(base,stripe,o={}){
+  const c=mkCanvas(512,512),x=c.getContext('2d');
+  x.fillStyle=base; x.fillRect(0,0,512,512);
+  x.fillStyle=stripe; for(let i=0;i<512;i+=64) x.fillRect(i,0,26,512);
+  if(o.damask){ x.globalAlpha=.3; x.fillStyle=o.damask;
+    for(let i=45;i<512;i+=128) for(let j=64;j<512;j+=128){ x.save(); x.translate(i,j); x.rotate(Math.PI/4); x.fillRect(-13,-13,26,26); x.restore(); }
+    x.globalAlpha=1; }
+  if(o.cracks){ x.lineWidth=1.4;
+    for(let i=0;i<16;i++){ x.strokeStyle='rgba(0,0,0,'+(.2+Math.random()*.3)+')'; x.beginPath();
+      let px=Math.random()*512,py=Math.random()*200; x.moveTo(px,py);
+      while(py<512){ px+=(Math.random()-.5)*26; py+=20+Math.random()*50; x.lineTo(px,py); } x.stroke(); } }
+  const g=x.createLinearGradient(0,0,0,512); g.addColorStop(0,'rgba(0,0,0,.4)'); g.addColorStop(.22,'rgba(0,0,0,0)');
+  g.addColorStop(.82,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.5)');
+  x.fillStyle=g; x.fillRect(0,0,512,512);
+  for(let i=0;i<70;i++){ x.globalAlpha=.03+Math.random()*.05; x.fillStyle='#1c1710';
+    x.beginPath(); x.arc(Math.random()*512,Math.random()*512,6+Math.random()*42,0,7); x.fill(); }
+  x.globalAlpha=1; return c;
+}
+function texCarpet(base,pat){
+  const c=mkCanvas(512,512),x=c.getContext('2d');
+  x.fillStyle=base; x.fillRect(0,0,512,512);
+  x.strokeStyle=pat; x.lineWidth=2;
+  for(let i=-512;i<1024;i+=74) for(let j=0;j<512;j+=74){ x.beginPath();
+    x.moveTo(i+j*.5,j+10); x.lineTo(i+j*.5+30,j+37); x.lineTo(i+j*.5,j+64); x.lineTo(i+j*.5-30,j+37); x.closePath(); x.globalAlpha=.4; x.stroke(); }
+  x.globalAlpha=1;
+  for(let i=0;i<2600;i++){ x.fillStyle=Math.random()>.5?'rgba(0,0,0,.14)':'rgba(255,255,255,.05)';
+    x.fillRect(Math.random()*512,Math.random()*512,2,2); }
+  return c;
+}
+function texWood(base,dark){
+  const c=mkCanvas(512,512),x=c.getContext('2d');
+  x.fillStyle=base; x.fillRect(0,0,512,512);
+  for(let i=0;i<512;i+=3){ x.strokeStyle=dark; x.globalAlpha=.08+Math.random()*.14; x.lineWidth=1+Math.random()*2;
+    x.beginPath(); x.moveTo(i,0); for(let j=0;j<=512;j+=32) x.lineTo(i+Math.sin(j*.02+i)*5,j); x.stroke(); }
+  x.globalAlpha=1; return c;
+}
+function texDoor(base,dark){
+  const c=mkCanvas(256,512),x=c.getContext('2d');
+  x.fillStyle=base; x.fillRect(0,0,256,512);
+  for(let i=0;i<256;i+=3){ x.strokeStyle=dark; x.globalAlpha=.1+Math.random()*.12; x.beginPath(); x.moveTo(i,0); x.lineTo(i,512); x.stroke(); }
+  x.globalAlpha=1; x.strokeStyle='rgba(0,0,0,.55)'; x.lineWidth=6;
+  x.strokeRect(34,36,188,180); x.strokeRect(34,290,188,180);
+  const g1=x.createLinearGradient(0,0,0,512); g1.addColorStop(0,'rgba(0,0,0,.25)'); g1.addColorStop(.5,'rgba(0,0,0,0)'); g1.addColorStop(1,'rgba(0,0,0,.3)');
+  x.fillStyle=g1; x.fillRect(0,0,256,512); return c;
+}
+function texMetal(){
+  const c=mkCanvas(256,256),x=c.getContext('2d');
+  x.fillStyle='#3c3d40'; x.fillRect(0,0,256,256);
+  for(let i=0;i<256;i+=32){ x.fillStyle='rgba(255,255,255,.05)'; x.fillRect(i,0,3,256); x.fillStyle='rgba(0,0,0,.25)'; x.fillRect(i+26,0,6,256); }
+  for(let i=0;i<80;i++){ x.fillStyle='rgba(0,0,0,.12)'; x.fillRect(Math.random()*256,Math.random()*256,Math.random()*20,2); }
+  return c;
+}
+function texPlate(num){
+  const c=mkCanvas(128,96),x=c.getContext('2d');
+  x.fillStyle='#191410'; x.fillRect(0,0,128,96);
+  x.strokeStyle='#5a4a2c'; x.lineWidth=4; x.strokeRect(4,4,120,88);
+  x.fillStyle='#c8a86a'; x.font='bold 46px Georgia'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillText(String(num),64,52); return c;
+}
+function texSign(text,fg='#ff5a3c',bg='#120a08'){
+  const c=mkCanvas(512,128),x=c.getContext('2d');
+  x.fillStyle=bg; x.fillRect(0,0,512,128);
+  x.strokeStyle=fg; x.lineWidth=5; x.strokeRect(8,8,496,112);
+  x.fillStyle=fg; x.font='bold 64px Georgia'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillText(text,256,68); return c;
+}
+function texPaper(){
+  const c=mkCanvas(340,440),x=c.getContext('2d');
+  x.fillStyle='#cfc49e'; x.fillRect(0,0,340,440);
+  for(let i=0;i<40;i++){ x.fillStyle='rgba(90,75,40,'+(Math.random()*.09)+')'; x.beginPath(); x.arc(Math.random()*340,Math.random()*440,Math.random()*30,0,7); x.fill(); }
+  x.fillStyle='#2a2418'; x.textAlign='center';
+  x.save(); x.translate(170,150); x.rotate(-.06); x.font='italic bold 44px Georgia'; x.fillText("Don't take",0,0); x.restore();
+  x.save(); x.translate(170,215); x.rotate(.04); x.font='italic bold 44px Georgia'; x.fillText('the 13th floor.',0,0); x.restore();
+  x.strokeStyle='rgba(42,36,24,.5)'; x.lineWidth=2; x.beginPath(); x.moveTo(60,300); x.lineTo(280,290); x.stroke();
+  return c;
+}
+function drawPainting(c,stage){ // 0 عادي | 1 فيه الشخص | 2 الشخص اختفى | 3 النهاية
+  const x=c.getContext('2d'),W=640,H=440;
+  x.clearRect(0,0,W,H);
+  const sky=x.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#a3906c'); sky.addColorStop(.62,'#8e7a56'); sky.addColorStop(.63,'#6b5b40'); sky.addColorStop(1,'#584a33');
+  x.fillStyle=sky; x.fillRect(0,0,W,H);
+  x.fillStyle='#3a352b'; x.fillRect(140,60,360,215);
+  x.fillStyle='#2c2820'; x.beginPath(); x.moveTo(130,62); x.lineTo(320,18); x.lineTo(510,62); x.closePath(); x.fill();
+  for(let r=0;r<5;r++) for(let cl=0;cl<6;cl++){ const lit=Math.random()<.16;
+    x.fillStyle=lit?'#7a6a3e':'#211d15'; x.fillRect(168+cl*55,84+r*40,34,24); }
+  x.fillStyle='#241f16'; x.fillRect(300,220,44,55);
+  x.fillStyle='#4c4130'; x.fillRect(0,275,W,H-275);
+  function fig(px,py,s,col){ x.fillStyle=col;
+    x.beginPath(); x.arc(px,py-58*s,13*s,0,7); x.fill();
+    x.beginPath(); x.moveTo(px-15*s,py); x.quadraticCurveTo(px-17*s,py-52*s,px,py-50*s);
+    x.quadraticCurveTo(px+17*s,py-52*s,px+15*s,py); x.closePath(); x.fill();
+    x.fillRect(px-13*s,py-4,7*s,4); x.fillRect(px+6*s,py-4,7*s,4); }
+  [[-120,1.15],[-70,1.05],[-20,.75],[35,.65]].forEach(p=>fig(320+p[0],352,p[1],'#1c1812'));
+  if(stage===1) fig(455,356,1.05,'#8a2a1e');
+  if(stage===3){ fig(320,352,.95,'#8a2a1e'); fig(375,352,.6,'#8a2a1e'); }
+  for(let i=0;i<24;i++){ x.strokeStyle='rgba(255,255,255,.05)'; x.lineWidth=1; x.beginPath();
+    const sx=Math.random()*W,sy=Math.random()*H; x.moveTo(sx,sy); x.lineTo(sx+Math.random()*40-20,sy+Math.random()*40-20); x.stroke(); }
+  const v=x.createRadialGradient(320,200,120,320,200,420); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.55)');
+  x.fillStyle=v; x.fillRect(0,0,W,H);
+  x.fillStyle='rgba(40,32,20,.8)'; x.font='italic 20px Georgia'; x.textAlign='right'; x.fillText('13.11.19—',620,425);
+}
+function drawPhotoSleep(){
+  const c=mkCanvas(512,380),x=c.getContext('2d');
+  x.fillStyle='#0c1116'; x.fillRect(0,0,512,380);
+  const g=x.createRadialGradient(256,170,30,256,170,300); g.addColorStop(0,'#3d4a52'); g.addColorStop(1,'#070a0d');
+  x.fillStyle=g; x.fillRect(0,0,512,380);
+  x.fillStyle='#151a1f'; x.fillRect(60,250,392,60);
+  x.fillStyle='#232c34'; x.beginPath(); x.ellipse(256,258,168,44,0,0,7); x.fill();
+  x.beginPath(); x.arc(160,242,26,0,7); x.fillStyle='#1a2127'; x.fill();
+  x.fillStyle='#0d1114'; x.beginPath(); x.arc(152,236,25,Math.PI*.9,Math.PI*2.05); x.fill();
+  x.fillStyle='rgba(120,20,15,.85)'; x.font='16px monospace'; x.textAlign='right'; x.fillText('03:13',492,360);
+  const v=x.createRadialGradient(256,180,60,256,180,340); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.75)');
+  x.fillStyle=v; x.fillRect(0,0,512,380);
+  return c;
+}
+function drawClock(c,hh,mm){
+  const x=c.getContext('2d'),cx=256,cy=256;
+  x.clearRect(0,0,512,512);
+  x.fillStyle='#191512'; x.beginPath(); x.arc(cx,cy,254,0,7); x.fill();
+  const g=x.createRadialGradient(cx-70,cy-70,40,cx,cy,240); g.addColorStop(0,'#efe8d2'); g.addColorStop(1,'#c9bfa2');
+  x.fillStyle=g; x.beginPath(); x.arc(cx,cy,236,0,7); x.fill();
+  for(let i=0;i<60;i++){ const a=i/60*Math.PI*2, big=i%5===0;
+    x.strokeStyle='#3a3226'; x.lineWidth=big?7:2; x.beginPath();
+    x.moveTo(cx+Math.sin(a)*(big?206:216),cy-Math.cos(a)*(big?206:216));
+    x.lineTo(cx+Math.sin(a)*226,cy-Math.cos(a)*226); x.stroke(); }
+  x.fillStyle='#3a3226'; x.font='bold 52px Amiri, Georgia'; x.textAlign='center'; x.textBaseline='middle';
+  [[12,0],[3,90],[6,180],[9,270]].forEach(n=>{ const a=n[1]/360*Math.PI*2;
+    x.fillText(String(n[0]),cx+Math.sin(a)*172,cy-Math.cos(a)*172); });
+  for(let i=0;i<26;i++){ x.fillStyle='rgba(120,95,55,'+(Math.random()*.12)+')'; x.beginPath();
+    x.arc(cx+(Math.random()-.5)*380,cy+(Math.random()-.5)*380,Math.random()*26,0,7); x.fill(); }
+  const ha=((hh%12)+mm/60)/12*Math.PI*2, ma=mm/60*Math.PI*2;
+  x.strokeStyle='#241f16'; x.lineWidth=13; x.lineCap='round'; x.beginPath(); x.moveTo(cx,cy);
+  x.lineTo(cx+Math.sin(ha)*108,cy-Math.cos(ha)*108); x.stroke();
+  x.lineWidth=7; x.beginPath(); x.moveTo(cx,cy); x.lineTo(cx+Math.sin(ma)*176,cy-Math.cos(ma)*176); x.stroke();
+  x.fillStyle='#241f16'; x.beginPath(); x.arc(cx,cy,14,0,7); x.fill();
+}
+function texWindow(){
+  const c=mkCanvas(256,320),x=c.getContext('2d');
+  x.fillStyle='#0a1424'; x.fillRect(0,0,256,320);
+  for(let i=0;i<46;i++){ x.fillStyle='rgba(217,214,190,'+(.25+Math.random()*.6)+')'; x.fillRect(Math.random()*256,Math.random()*320,2,2); }
+  x.fillStyle='#d9d2b8'; x.beginPath(); x.arc(178,86,26,0,7); x.fill();
+  x.fillStyle='#0a1424'; x.beginPath(); x.arc(166,78,22,0,7); x.fill();
+  x.strokeStyle='#241d12'; x.lineWidth=16; x.strokeRect(8,8,240,304);
+  x.beginPath(); x.moveTo(128,8); x.lineTo(128,312); x.moveTo(8,160); x.lineTo(248,160); x.stroke();
+  return c;
+}
+
+/* ================== مشهد وأدوات بناء ================== */
+let scene,camera,renderer,clockT;
+let world=new THREE.Group();
+let colliders=[],interactables=[],triggers=[],anims=[],flickers=[];
+let levelTick=null,echoMode=false,lightScale=1;
+const player={x:0,z:0};
+let yaw=Math.PI,pitch=0,bobP=0,stepAcc=0,shake=0,lastMove=0;
+let frozen=true,paused=false,started=false,gameOver=false,panelOpen=false,noteOpen=false,expectUnlock=false,hasKey=false,hadLock=false;
+let levelToken=0,schedIds=[],curInter=null,noteOnClose=null,ELV=null;
+const PLAYER_H=1.78;
+let fadeBlack=true, blackSince=0;
+
+function sched(ms,fn){ const id=setTimeout(fn,ms); schedIds.push(id); return id; }
+function clearSched(){ schedIds.forEach(clearTimeout); schedIds=[]; }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+let startQueue=[];
+function startAt(ms,fn){ startQueue.push([ms,fn]); }
+function flushStart(){ startQueue.forEach(a=>sched(a[0],a[1])); startQueue=[]; }
+
+function init(){
+  renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,IS_TOUCH?1.25:1.5));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
+  scene=new THREE.Scene(); scene.background=new THREE.Color(0x050403);
+  camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.05,70);
+  camera.rotation.order='YXZ';
+  clockT=new THREE.Clock();
+  scene.add(world);
+  renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+  addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+}
+function std(color,o={}){ return new THREE.MeshStandardMaterial(Object.assign({color,roughness:.92,metalness:.03},o)); }
+function addCol(x1,x2,z1,z2,y1=0,y2=3.2){
+  const c={x1:Math.min(x1,x2),x2:Math.max(x1,x2),z1:Math.min(z1,z2),z2:Math.max(z1,z2),y1,y2};
+  colliders.push(c); return c;
+}
+function box(w,h,d,x,y,z,mat,solid=true){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); world.add(m);
+  if(solid) addCol(x-w/2,x+w/2,z-d/2,z+d/2,y-h/2,y+h/2);
+  return m;
+}
+function plane(w,h,x,y,z,mat,rx=0,ry=0){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat); m.position.set(x,y,z); m.rotation.set(rx,ry,0); world.add(m); return m;
+}
+function addSconce(side,z,color,intensity,dist=8){
+  const xw=side*1.5;
+  box(.1,.34,.14,xw,2.1,z,std(0x241d14,{roughness:.5}),false);
+  const shade=new THREE.Mesh(new THREE.ConeGeometry(.11,.2,10),std(0x1c1710)); shade.position.set(xw,2.24,z); world.add(shade);
+  const bulb=new THREE.Mesh(new THREE.SphereGeometry(.05,10,8),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:2.2,roughness:.4}));
+  bulb.position.set(xw-side*.08,2.12,z); world.add(bulb);
+  const L=new THREE.PointLight(color,intensity,dist,2); L.position.set(xw-side*.3,2.1,z); world.add(L);
+  flickers.push({L,base:intensity,sp:5+Math.random()*5,amp:.16});
+}
+function addHemi(sky,ground,i){ const h=new THREE.HemisphereLight(sky,ground,i); scene.add(h); }
+
+/* ---- الأبواب ---- */
+function makeRealDoor(side,doorZ,num,opts={}){
+  const xw=side*1.575;
+  const fm=std(0x241a10,{roughness:.6});
+  box(.2,.14,1.12,xw,2.18,doorZ,fm,false); box(.2,2.25,.14,xw,1.12,doorZ-.53,fm,false); box(.2,2.25,.14,xw,1.12,doorZ+.53,fm,false);
+  const dHex='#'+(opts.color||0x3f2d1e).toString(16).padStart(6,'0');
+  const dmat=std(opts.color||0x3f2d1e,{map:tx(texDoor(dHex,'rgba(0,0,0,.6)')),roughness:.62});
+  const hinge=new THREE.Group(); hinge.position.set(xw,0,doorZ-.475); world.add(hinge);
+  const leaf=new THREE.Mesh(new THREE.BoxGeometry(.07,2.08,.95),dmat); leaf.position.set(0,1.04,.475); hinge.add(leaf);
+  const knob=new THREE.Mesh(new THREE.SphereGeometry(.035,10,8),std(0xa89050,{roughness:.3,metalness:.7})); knob.position.set(-side*.06,1.02,.82); hinge.add(knob);
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(.19,.15),new THREE.MeshStandardMaterial({map:tx(texPlate(num)),roughness:.5}));
+  pl.position.set(-side*.045,1.6,.475); pl.rotation.y=-side*Math.PI/2; hinge.add(pl);
+  const col=addCol(xw-.11,xw+.11,doorZ-.55,doorZ+.55);
+  const o={open:false,col};
+  const it={x:xw,y:1.2,z:doorZ,r:2.1,prompt:opts.prompt||'افتحي الباب',fn:()=>{
+    if(o.open)return;
+    if(opts.gate&&!opts.gate()){ sfxKnock(.2); say(opts.lockedMsg||'مقفول.',2); return; }
+    o.open=true; it.enabled=false;
+    colliders=colliders.filter(cc=>cc!==col); sfxDoor();
+    anims.push({t:0,dur:1.2,fn:k=>{hinge.rotation.y=side*1.85*k;}});
+    if(opts.fn)opts.fn();
+  }};
+  interactables.push(it);
+  return o;
+}
+function makeFakeDoor(side,doorZ,num,lines){
+  const xw=side*1.5;
+  const fm=std(0x241a10,{roughness:.6});
+  box(.06,.14,1.12,xw+side*.02,2.16,doorZ,fm,false); box(.06,2.2,.14,xw+side*.02,1.08,doorZ-.53,fm,false); box(.06,2.2,.14,xw+side*.02,1.08,doorZ+.53,fm,false);
+  const dmat=std(0x3a2c1e,{map:tx(texDoor('#3a2c1e','rgba(0,0,0,.6)')),roughness:.65});
+  const leaf=new THREE.Mesh(new THREE.BoxGeometry(.06,2.05,.95),dmat); leaf.position.set(xw,1.02,doorZ); world.add(leaf);
+  const knob=new THREE.Mesh(new THREE.SphereGeometry(.033,10,8),std(0xa89050,{roughness:.3,metalness:.7})); knob.position.set(xw-side*.05,1.0,doorZ+.32); world.add(knob);
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(.19,.15),new THREE.MeshStandardMaterial({map:tx(texPlate(num)),roughness:.5}));
+  pl.position.set(xw-side*.04,1.58,doorZ); pl.rotation.y=-side*Math.PI/2; world.add(pl);
+  interactables.push({x:xw,y:1.2,z:doorZ,r:1.9,prompt:'جرّبي الباب',fn:()=>{ sfxKnock(.16); say(lines[Math.floor(Math.random()*lines.length)],1.9); }});
+}
+
+/* ---- الصورة المعلقة ---- */
+function makePainting(x,y,z,ry){
+  const c=mkCanvas(640,440); drawPainting(c,0);
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;
+  const frame=new THREE.Mesh(new THREE.BoxGeometry(1.52,1.06,.07),std(0x4d3a1a,{roughness:.4,metalness:.5}));
+  frame.position.set(x,y,z); frame.rotation.y=ry; world.add(frame);
+  const mat=new THREE.MeshStandardMaterial({map:t,roughness:.85});
+  const p=new THREE.Mesh(new THREE.PlaneGeometry(1.36,.92),mat);
+  p.position.set(x+Math.sin(ry)*.05,y,z+Math.cos(ry)*.05); p.rotation.y=ry; world.add(p);
+  return {set(stage){ drawPainting(c,stage); t.needsUpdate=true; }};
+}
+
+/* ---- المصعد ---- */
+function buildElevator(zEnd,opts={}){
+  const mt=std(0x8f8f8c,{map:tx(texMetal(),2,2),roughness:.42,metalness:.65});
+  box(.55,3.1,.16,-1.28,1.55,zEnd-.08,std(0x2a2318)); box(.55,3.1,.16,1.28,1.55,zEnd-.08,std(0x2a2318));
+  box(2.0,.9,.16,0,2.66,zEnd-.08,std(0x2a2318),false);
+  box(.26,2.5,2.4,-1.14,1.25,zEnd-1.2,mt); box(.26,2.5,2.4,1.14,1.25,zEnd-1.2,mt);
+  box(2.5,2.5,.2,0,1.25,zEnd-2.4,mt); box(2.5,.12,2.5,0,2.52,zEnd-1.2,mt);
+  box(2.3,.05,2.4,0,.03,zEnd-1.2,mt,false);
+  box(.9,.05,.5,0,2.44,zEnd-1.2,new THREE.MeshStandardMaterial({color:0xfff4da,emissive:0xffe9c0,emissiveIntensity:1.6}),false);
+  const L=new THREE.PointLight(0xffedd0,.9,4.5,2); L.position.set(0,2.25,zEnd-1.2); world.add(L);
+  const dm=std(0x7d7d79,{map:tx(texMetal()),roughness:.4,metalness:.7});
+  const dl=new THREE.Mesh(new THREE.BoxGeometry(.97,2.3,.07),dm); dl.position.set(-.49,1.15,zEnd+.02); world.add(dl);
+  const dr=new THREE.Mesh(new THREE.BoxGeometry(.97,2.3,.07),dm); dr.position.set(.49,1.15,zEnd+.02); world.add(dr);
+  const pc=mkCanvas(128,192),px=pc.getContext('2d'); px.fillStyle='#1d1b17'; px.fillRect(0,0,128,192);
+  for(let i=0;i<12;i++){ px.fillStyle=(i===11)?'#8a6f3a':'#5a5442'; px.beginPath(); px.arc(32+(i%2)*64,26+Math.floor(i/2)*38,12,0,7); px.fill(); }
+  const pt=new THREE.CanvasTexture(pc); pt.encoding=THREE.sRGBEncoding;
+  plane(.28,.42,.96,1.32,zEnd-.95,new THREE.MeshStandardMaterial({map:pt,roughness:.5}),0,-Math.PI/2);
+  const elv={opened:false,l:dl,r:dr,anim:null,col:addCol(-1.05,1.05,zEnd-.12,zEnd+.12),
+    open(){ if(elv.opened)return; elv.opened=true; colliders=colliders.filter(c=>c!==elv.col); sfxDoor();
+      if(elv.anim){ const i=anims.indexOf(elv.anim); if(i>=0)anims.splice(i,1); }
+      const a={t:0,dur:1.7,fn:k=>{dl.position.x=-.49-k*.86; dr.position.x=.49+k*.86;}}; anims.push(a); elv.anim=a; },
+    close(){ if(!elv.opened)return; elv.opened=false; sfxDoor();
+      if(elv.anim){ const i=anims.indexOf(elv.anim); if(i>=0)anims.splice(i,1); }
+      const a={t:0,dur:1.5,fn:k=>{dl.position.x=-1.35+k*.86; dr.position.x=1.35-k*.86;},done:()=>{ if(!colliders.includes(elv.col))colliders.push(elv.col); }};
+      anims.push(a); elv.anim=a; }
+  };
+  ELV=elv;
+  interactables.push({x:.96,y:1.35,z:zEnd-1.0,r:1.7,prompt:'لوحة أزرار المصعد',fn:()=>openElevatorPanel(opts.mode||'intro')});
+  if(opts.call){
+    box(.16,.24,.06,1.2,1.4,zEnd+.02,std(0x1c1a16,{roughness:.4}),false);
+    plane(.05,.05,1.2,1.44,zEnd+.06,new THREE.MeshBasicMaterial({color:0xd8a24a}),0,0);
+    interactables.push({x:1.2,y:1.4,z:zEnd+.1,r:2.0,prompt:'استدعي المصعد',fn:()=>{ sfxDing(); elv.open(); }});
+  }
+  return elv;
+}
+/* فتحة المصعد المختفي */
+function buildMissingElevator(zEnd,withSign,lines){
+  const grp=new THREE.Group(); world.add(grp);
+  function gbox(w,h,d,x,y,z,mat){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); grp.add(m); return m; }
+  const wm=std(0x22201a);
+  gbox(.55,3.1,.16,-1.28,1.55,zEnd-.08,wm); gbox(.55,3.1,.16,1.28,1.55,zEnd-.08,wm); gbox(2.0,.9,.16,0,2.66,zEnd-.08,wm);
+  gbox(2.1,2.4,.9,0,1.1,zEnd-.55,new THREE.MeshBasicMaterial({color:0x000000}));
+  const dm=std(0x4c4c48,{map:tx(texMetal()),roughness:.55,metalness:.5});
+  const d1=gbox(.97,2.3,.07,-.82,1.12,zEnd+.02,dm); d1.rotation.z=.05;
+  const d2=gbox(.97,2.3,.07,.78,1.1,zEnd+.02,dm); d2.rotation.z=-.04;
+  const col=addCol(-1.12,1.12,zEnd-1.3,zEnd+.1);
+  if(withSign){
+    const s=new THREE.Mesh(new THREE.PlaneGeometry(1.15,.3),new THREE.MeshBasicMaterial({map:tx(texSign('FLOOR 13','#c9302a','#0e0806'))}));
+    s.position.set(0,2.62,zEnd+.04); grp.add(s);
+    const sl=new THREE.PointLight(0xb02018,.4,3,2); sl.position.set(0,2.4,zEnd+.5); grp.add(sl);
+  }
+  let it=null;
+  if(lines){ it={x:0,y:1.2,z:zEnd+.3,r:2.2,prompt:'بصّي ورا الأبواب',fn:()=>{ sfxWhisper(); say(lines[0],2.6); if(lines[1])say(lines[1],3.0); }};
+    interactables.push(it); }
+  return {grp,col,it};
+}
+
+/* ---- أثاث ---- */
+function makePhone(x,y,z,ry=0){
+  const g=new THREE.Group(); g.position.set(x,y,z); g.rotation.y=ry; world.add(g);
+  const bm=std(0x14110d,{roughness:.35});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.26,.12,.2),bm); body.position.y=.06; g.add(body);
+  const hs=new THREE.Mesh(new THREE.BoxGeometry(.3,.045,.07),bm); hs.position.set(0,.15,-.04); g.add(hs);
+  [-.11,.11].forEach(o=>{ const e=new THREE.Mesh(new THREE.CylinderGeometry(.05,.045,.08,10),bm); e.rotation.x=Math.PI/2; e.position.set(o,.15,.03); g.add(e); });
+  return g;
+}
+function makeSuitcase(x,z,ry=0){
+  const g=new THREE.Group(); g.position.set(x,.18,z); g.rotation.y=ry; world.add(g);
+  const m=std(0x5a3d22,{roughness:.6});
+  const b=new THREE.Mesh(new THREE.BoxGeometry(.56,.36,.22),m); g.add(b);
+  const h=new THREE.Mesh(new THREE.TorusGeometry(.06,.014,8,14,Math.PI),std(0x2a1c0e)); h.position.y=.19; g.add(h);
+  addCol(x-.3,x+.3,z-.14,z+.14);
+}
+function makeKey(x,y,z,label){
+  const g=new THREE.Group(); g.position.set(x,y,z); g.rotation.x=-Math.PI/2; g.rotation.z=Math.random(); world.add(g);
+  const m=std(0xb0a060,{roughness:.3,metalness:.8});
+  const bow=new THREE.Mesh(new THREE.TorusGeometry(.05,.013,8,16),m); g.add(bow);
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.16,8),m); sh.rotation.z=Math.PI/2; sh.position.x=.12; g.add(sh);
+  const th=new THREE.Mesh(new THREE.BoxGeometry(.04,.03,.015),m); th.position.set(.17,-.02,0); g.add(th);
+  const c=mkCanvas(128,64),cx=c.getContext('2d'); cx.fillStyle='#d9d0bd'; cx.fillRect(0,0,128,64);
+  cx.fillStyle='#3a3226'; cx.font='bold 40px Georgia'; cx.textAlign='center'; cx.fillText(label,64,46);
+  const lp=new THREE.Mesh(new THREE.PlaneGeometry(.11,.055),new THREE.MeshBasicMaterial({map:tx(c)})); lp.position.set(0,.05,.06); g.add(lp);
+  return g;
+}
+function makeSleeper(x,y,z,ry=0){
+  const g=new THREE.Group(); g.position.set(x,y,z); g.rotation.y=ry; world.add(g);
+  const bl=new THREE.Mesh(new THREE.SphereGeometry(.5,16,12),std(0x2a3350,{roughness:1}));
+  bl.scale.set(.72,.34,1.05); bl.position.y=.1; g.add(bl);
+  const hd=new THREE.Mesh(new THREE.SphereGeometry(.14,12,10),std(0x87674e)); hd.position.set(0,.14,-.62); g.add(hd);
+  const hr=new THREE.Mesh(new THREE.SphereGeometry(.15,12,10),std(0x120f0c)); hr.position.set(0,.19,-.66); hr.scale.set(1,.8,1); g.add(hr);
+  return g;
+}
+function buildRoom(side,zc,o={}){
+  const x0=side*1.66, x1=side*6.5, xm=(x0+x1)/2, zA=zc-2.5, zB=zc+2.5;
+  const wmat=std(0xffffff,{map:tx(texWall(o.wallA||'#5a4a36',o.wallB||'#4e3d2a',{damask:o.damask}),2,1)});
+  const fmat=std(0xffffff,{map:tx(texCarpet(o.carA||'#40301f',o.carB||'#241708'),2,2)});
+  box(4.9,.08,5.0,xm,-.04,zc,fmat,false);
+  box(4.9,.1,5.0,xm,3.08,zc,std(0x8a8272),false);
+  box(.16,3.1,5.0,x1,1.55,zc,wmat); box(4.9,3.1,.16,xm,1.55,zA,wmat); box(4.9,3.1,.16,xm,1.55,zB,wmat);
+  const roomLight=new THREE.PointLight(o.light||0xffd9a0,o.li||.5,7,2); roomLight.position.set(xm,2.5,zc); world.add(roomLight);
+  if(o.flicker) flickers.push({L:roomLight,base:o.li||.5,sp:9,amp:.5});
+  let bedX=side*4.1, bedZ=zc-1.2, sleeper=null;
+  if(!o.empty){
+    const bm=std(0xffffff,{map:tx(texWood(o.woodA||'#4a3520','rgba(0,0,0,.5)')),roughness:.6});
+    box(1.4,.42,2.0,bedX,.21,bedZ,bm);
+    box(1.4,.95,.09,bedX,.5,bedZ-1.0,bm);
+    box(1.3,.2,1.9,bedX,.5,bedZ,std(0xb8ac93,{roughness:1}),false);
+    box(.6,.13,.36,bedX,.62,bedZ-.72,std(0xd9d0bd,{roughness:1}),false);
+    box(1.32,.07,1.05,bedX,.6,bedZ+.35,std(o.blk||0x5c2a20,{roughness:1}),false);
+    addCol(bedX-.75,bedX+.75,bedZ-1.1,bedZ+1.1);
+    if(o.suitcase) makeSuitcase(side*5.7,zc+.9,.4);
+    if(o.sleeper) sleeper=makeSleeper(bedX,.6,bedZ-.15,side>0?Math.PI:0);
+  }
+  if(o.phone) makePhone(side*6.1,.0,zc+.6,Math.PI/2);
+  if(o.window) plane(1.3,1.6,side*4.6,1.75,zB-.09,new THREE.MeshBasicMaterial({map:tx(texWindow())}),0,Math.PI);
+  return {bedX,bedZ,sleeper};
+}
+
+/* ================== نصوص وواجهة ================== */
+let subQ=[],subBusy=false,subTok=0;
+function say(text,dur=2.6){ subQ.push({text,dur}); pumpSub(); }
+/* سطر مهم بيقفز الطابور ويظهر فورًا */
+function sayNow(text,dur=2.6){
+  subTok++; subQ=[];
+  subEl.textContent=text; subEl.classList.add('show');
+  const tok=subTok; subBusy=false;
+  setTimeout(()=>{ if(tok===subTok) subEl.classList.remove('show'); },dur*1000);
+}
+function pumpSub(){ if(subBusy||!subQ.length)return; subBusy=true; const s=subQ.shift();
+  subTok++; const tok=subTok;
+  subEl.textContent=s.text; subEl.classList.add('show');
+  setTimeout(()=>{ if(tok!==subTok)return; subEl.classList.remove('show'); subBusy=false; setTimeout(pumpSub,380); },s.dur*1000); }
+function obj(t){ objEl.textContent=t; objEl.classList.add('show');
+  try{ objEl.animate([{opacity:1},{opacity:.2},{opacity:1}],{duration:900,easing:'ease'}); }catch(e){} }
+function hideObj(){ objEl.classList.remove('show'); }
+function fade(v,d){
+  if(v>.5){ fadeBlack=true; blackSince=clockT?clockT.elapsedTime:0; } else fadeBlack=false;
+  return new Promise(res=>{ fadeEl.style.transitionDuration=d+'s'; fadeEl.style.opacity=v; setTimeout(res,d*1000+60); });
+}
+function showFloor(t,red=false,fadeOut=true){ floorEl.textContent=t; floorEl.classList.toggle('red',red); floorEl.classList.add('show');
+  if(fadeOut) setTimeout(()=>floorEl.classList.remove('show'),1300); }
+function openNote(canvas,text){ noteOpen=true; noteImg.src=canvas.toDataURL(); noteText.textContent=text; noteEl.style.display='flex'; }
+function closeNote(){ noteOpen=false; noteEl.style.display='none'; if(noteOnClose){const f=noteOnClose; noteOnClose=null; f();} }
+noteEl.addEventListener('click',closeNote);
+
+/* لوحة المصعد */
+let panelMode='intro';
+function openElevatorPanel(mode){
+  panelMode=mode; panelOpen=true; expectUnlock=true;
+  try{document.exitPointerLock();}catch(e){}
+  btnGrid.innerHTML='';
+  const AR=['','١','٢','٣','٤','٥','٦','٧','٨','٩','١٠','١١','١٢'];
+  if(mode==='intro'){
+    panelHint.textContent='اختاري الدور… مفيش ١٣';
+    [12,11,10,9,8,7,6,5,4,3,2,1].forEach(n=>{ const b=document.createElement('div'); b.className='ebtn'+(n===12?' go':'');
+      b.textContent=AR[n]; b.onclick=()=>panelPick(n); btnGrid.appendChild(b); });
+  } else {
+    panelHint.textContent='…الزر الوحيد اللي شغّال';
+    const b=document.createElement('div'); b.className='ebtn thirteen'; b.textContent='١٣'; b.onclick=()=>panelPick(13); btnGrid.appendChild(b);
+    [12,11,10,9,8,7,6,5,4,3,2,1].forEach(n=>{ const d=document.createElement('div'); d.className='ebtn dead'; d.textContent=AR[n]; btnGrid.appendChild(d); });
+  }
+  panelEl.style.display='flex';
+}
+function closePanel(relock=true){ panelEl.style.display='none'; panelOpen=false;
+  if(relock&&!IS_TOUCH&&started&&!gameOver){ try{ const p=renderer.domElement.requestPointerLock(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} } }
+ $('panelClose').onclick=()=>closePanel();
+function panelPick(n){
+  sfxClick();
+  if(panelMode==='intro'&&n===12){ closePanel(); startRideIntro(); }
+  else if(panelMode==='final'&&n===13){ closePanel(); startRideFinal(); }
+}
+
+/* ================== إدارة المستويات ================== */
+function rebuild(n){
+  clearSched(); stopLoops(); echoMode=false; ELV=null; lightScale=1; startQueue=[];
+  scene.remove(world);
+  world.traverse(o=>{ if(o.geometry)o.geometry.dispose();
+    if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.map)m.map.dispose(); m.dispose(); }); } });
+  colliders=[];interactables=[];triggers=[];anims=[];flickers=[];levelTick=null;
+  while(scene.children.length) scene.remove(scene.children[0]);
+  world=new THREE.Group(); scene.add(world);
+  buildLevel(n);
+}
+async function gotoLevel(n,narr){
+  const tok=levelToken+1; levelToken=tok;
+  frozen=true; hideObj(); subEl.classList.remove('show'); subQ=[]; subTok++;
+  clearSched(); stopLoops(); echoMode=false;
+  await fade(1,1.15); if(tok!==levelToken)return;
+  lbEl.classList.remove('on'); floorEl.classList.remove('show');
+  try{ rebuild(n); }catch(err){ console.error('خطأ في بناء الدور',n,err); }
+  if(narr){ fadeTxt.textContent=narr; fadeTxt.style.opacity=1; await sleep(2600); if(tok!==levelToken)return;
+    fadeTxt.style.opacity=0; await sleep(700); }
+  await fade(0,1.3); if(tok!==levelToken)return;
+  frozen=false;
+  flushStart();
+}
+
+const FAKE_LINES=['مقفولة.','المقبض بارد… ومفيش أي صوت.','مفيش حد ورا الباب ده.','صامتة. كأن مفيش غرفة أصلًا خلفها.'];
+function buildCorridor(L,st,doors){
+  scene.fog=new THREE.FogExp2(st.fog,st.fd); scene.background=new THREE.Color(st.fog);
+  addHemi(st.hemi||0x2a251c,0x0a0805,st.hemiI||.32);
+  const wmat=std(0xffffff,{map:tx(texWall(st.wA,st.wB,{damask:st.dam,cracks:st.cracks}),Math.max(1,L/3.4),1)});
+  const fmat=std(0xffffff,{map:tx(texCarpet(st.cA,st.cB),2,L/2.4)});
+  box(3.0,.09,L,0,-.045,-L/2,fmat,false);
+  box(3.0,.1,L,0,3.1,-L/2,std(0x746c5a,{map:tx(texWall('#6b6353','#5a5344',{}),3,L/3)}),false);
+  [1,-1].forEach(s=>{
+    const xw=s*1.575, list=doors.filter(d=>d.s===s);
+    const reals=list.filter(d=>d.real).sort((a,b)=>b.z-a.z);
+    let cur=.08;
+    const seg=(a,b)=>{ const len=Math.abs(b-a); if(len<=.02)return; box(.15,3.1,len,xw,1.55,(a+b)/2,wmat); };
+    for(const d of reals){
+      const near=d.z+.5;
+      seg(Math.min(cur,near),Math.max(cur,near));
+      box(.15,1.0,1.06,xw,2.6,d.z,wmat,false);
+      cur=d.z-.5;
+    }
+    seg(Math.min(cur,-L+.08),Math.max(cur,-L+.08));
+    list.forEach(d=>{ if(d.real) makeRealDoor(s,d.z,d.n,d); else makeFakeDoor(s,d.z,d.n,FAKE_LINES); });
+  });
+  for(let z=-4;z>-L+2.6;z-=(st.every||4.4)) addSconce((Math.round(z/(st.every||4.4))%2===0)?1:-1,z,st.light,st.li);
+  box(3.1,3.1,.16,0,1.55,-.08,std(0x221d15));
+  box(1.15,.05,.2,0,3.0,-.12,new THREE.MeshBasicMaterial({map:tx(texSign('EXIT','#ff5a3c','#140806'))}),false);
+  const exd=new THREE.Mesh(new THREE.BoxGeometry(.05,2.1,.9),std(0x18130c)); exd.position.set(-.62,1.05,-.2); world.add(exd);
+  const exd2=exd.clone(); exd2.position.x=.62; world.add(exd2);
+  interactables.push({x:0,y:1.2,z:-.25,r:1.9,prompt:'جرّبي باب الخروج',fn:()=>{ sfxKnock(.3); say('مقفول من برّه… كأنه مرسوم على الحيط.',2.6); }});
+}
+
+/* ============ المستويات ============ */
+function buildLevel(n){
+  const styles={
+    0:{wA:'#5a4a36',wB:'#4a3a27',dam:'#6b5940',cA:'#4a1f1c',cB:'#2c110e',light:0xffc27d,li:.55,fog:0x080604,fd:.05,every:4.4,hemi:0x2a2116,hemiI:.4},
+    1:{wA:'#24352a',wB:'#1b2a20',dam:'#31473a',cracks:true,cA:'#2a332c',cB:'#161d18',light:0xd8ffe4,li:.5,fog:0x060a07,fd:.075,every:4.4,hemi:0x14201a,hemiI:.35},
+    2:{wA:'#3a1414',wB:'#2c0f0f',dam:'#471a1a',cracks:true,cA:'#301410',cB:'#190806',light:0xff9a5a,li:.5,fog:0x0a0403,fd:.085,every:4.4,hemi:0x2a120c,hemiI:.33},
+    3:{wA:'#4a453c',wB:'#3c3830',cracks:true,cA:'#33302a',cB:'#1b1915',light:0xfff2c9,li:.5,fog:0x080807,fd:.075,every:4.4,hemi:0x24221c,hemiI:.35},
+    4:{wA:'#28120e',wB:'#1c0c09',cracks:true,cA:'#200d0a',cB:'#0f0503',light:0xff2a1e,li:.5,fog:0x0e0201,fd:.15,every:9,hemi:0x1c0605,hemiI:.22},
+    5:{wA:'#3a2c1c',wB:'#2c2214',dam:'#443421',cracks:true,cA:'#2c2214',cB:'#150f08',light:0xcfe0ff,li:.45,fog:0x05070c,fd:.08,every:4.4,hemi:0x141824,hemiI:.33},
+    6:{wA:'#1c2436',wB:'#141a29',dam:'#253048',cA:'#131a28',cB:'#090d15',light:0x5a7aff,li:.5,fog:0x030510,fd:.075,every:4.4,hemi:0x0d1424,hemiI:.35},
+    7:{wA:'#4e483c',wB:'#413c31',cA:'#3c352c',cB:'#221e17',light:0x8d867a,li:.35,fog:0x0b0a08,fd:.055,every:4.4,hemi:0x2a2721,hemiI:.3}
+  };
+
+  /* 0: غرفتك + ممر الدور 4 */
+  if(n===0){
+    setDrone(.05,150);
+    buildCorridor(26,styles[0],[
+      {s:1,z:-3,n:402,real:true,prompt:'افتحي باب الغرفة',fn:()=>say('خارجي بقى… ألاقي مكان يوضّح فين أنا.',2.4)},
+      {s:-1,z:-6,n:401},{s:1,z:-9,n:404},{s:-1,z:-12,n:403},
+      {s:1,z:-15,n:406},{s:-1,z:-18,n:405},{s:1,z:-21,n:408}
+    ]);
+    buildElevator(-26,{call:true,mode:'intro'});
+    buildRoom(1,-3.0,{suitcase:true,wallA:'#5a4a36',wallB:'#4a3a27',carA:'#40301f',carB:'#241708',light:0xffd9a0,li:.55,window:true});
+    box(.95,.07,.62,5.6,.76,-2.2,std(0x4a3520,{map:tx(texWood('#4a3520','rgba(0,0,0,.5)')),roughness:.55}),false);
+    [[5.22,-2.42],[5.98,-2.42],[5.22,-1.98],[5.98,-1.98]].forEach(p=>box(.06,.76,.06,p[0],.38,p[1],std(0x33240f),false));
+    addCol(5.12,6.08,-2.52,-1.88);
+    const paperC=texPaper();
+    const paper=plane(.24,.31,5.45,.81,-2.3,new THREE.MeshStandardMaterial({map:tx(paperC),roughness:.9}),-Math.PI/2,0);
+    paper.rotateZ(.35);
+    const keyM=makeKey(5.32,.81,-2.42,'402');
+    makePhone(5.85,.79,-2.1,Math.PI);
+    interactables.push({x:5.45,y:.85,z:-2.3,r:1.5,prompt:'اقرئي الورقة',fn:()=>{ sfxStatic();
+      openNote(paperC,'"متاخديش الدور التلتاشر."… مين اللي كاتب ده؟'); }});
+    const keyIt={x:5.32,y:.85,z:-2.42,r:1.5,prompt:'خدي المفتاح',fn:()=>{
+      world.remove(keyM); keyIt.enabled=false; hasKey=true; sfxClick();
+      say('مفتاح غرفتي… رقمه مش باين كويس.',2.4);
+      obj('دلوقتي افتحي باب الغرفة واخرجي للممر'); }};
+    interactables.push(keyIt);
+    interactables.push({x:5.85,y:.85,z:-2.1,r:1.5,prompt:'شيلي السماعة',fn:()=>{ sfxStatic(); say('…خط ميت.',1.6); }});
+    addTrigger(-1.5,1.5,-3.6,-2.2,()=>{ say('الممر… طبيعي جدًا.',2.2); say('ده بالظبط اللي مخوفني.',2.2);
+      obj('روحي للمصعد في آخر الممر'); },true);
+    addTrigger(-1.5,1.5,-24,-22.5,()=>{ say('المصعد… فيه زرار استدعاء على يمين بابه.',2.8); },true);
+    player.x=4.9; player.z=-4.9; yaw=-Math.PI/2+.4; pitch=0;
+  }
+
+  /* 1: الصورة — دلوقتي اللغز بيقولك بيعمل إيه في كل خطوة */
+  else if(n===1){
+    setDrone(.07,190);
+    buildCorridor(26,styles[1],[
+      {s:-1,z:-10,n:1302},{s:1,z:-6,n:1301},{s:1,z:-13,n:1303},{s:-1,z:-16,n:1304},
+      {s:1,z:-19,n:1305},{s:-1,z:-22,n:1306},{s:1,z:-23.2,n:1307}
+    ]);
+    buildMissingElevator(-26,true,['الأبواب مفتوحة… على حاجة سودا.','مفيش مصعد. مفيش غير حيطان.']);
+    const P=makePainting(-1.46,1.75,-6,Math.PI/2);
+    const l1={stage:0,revealed:0,ready:false,inStart:true,done:false,hideHinted:false,hideAt:-99};
+    /* إخفاء الشخص — بنعمله من قرب أو بضغطة E */
+    function hidePerson(){
+      if(l1.stage!==1)return;
+      l1.stage=2; l1.hideAt=clockT.elapsedTime; l1.hideHinted=false; P.set(2); sfxStatic();
+      sayNow('الشخص… مش موجود. البقعة دي فاضية.',2.6);
+      obj('ابعدي عن الصورة… وارجعي بصّي فيها');
+      sched(3000,()=>{ if(l1.stage===2) sayNow('…ابعدِ عنها. وارجعي بصّي تاني.',2.4); });
+    }
+    interactables.push({x:-1.46,y:1.75,z:-6,r:1.9,prompt:'بصّي على الصورة',fn:()=>{
+      if(l1.stage===1) hidePerson();
+      else if(l1.stage===2) sayNow('البقعة فاضية… ابعدِ عنها شوية وارجعي بصّي.',2.4);
+      else say('صورة عيلة واقفة قصاد الفندق… عادية. جدًا.',2.4);
+    }});
+    levelTick=(dt,t)=>{
+      const d=Math.hypot(player.x+1.46,player.z+6);
+      if(l1.stage===1&&d<1.5) hidePerson();
+      if(l1.stage===2&&d>2.8){
+        l1.stage=1; P.set(1); l1.revealed++; sfxTick(); sayNow('…رجع.',1.6);
+        if(l1.revealed>=1&&!l1.ready){ l1.ready=true;
+          say('بقرّب بيختفي… وتبعدي بيظهر. الصورة دي بتتحرك معايا.',3.2);
+          obj('ارجعي لمكان المصعد — في آخر الممر وراك'); }
+      }
+      /* لو واقفة قدام البقعة الفاضية لفترة طويلة — تلميح */
+      if(l1.stage===2&&d<2&&t-l1.hideAt>6&&!l1.hideHinted){ l1.hideHinted=true;
+        sayNow('…البقعة فاضية. ابعدِ عن الصورة وارجعي بصّي.',2.4); }
+      const inZ=player.z<-23.4;
+      if(!inZ) l1.inStart=false;
+      if(inZ&&!l1.inStart&&l1.ready&&!l1.done){ l1.done=true; startHeart(70);
+        say('…لا. لأ. لأ.',1.8); sched(2600,()=>gotoLevel(2,'فيه باب… مكان ما كان فيه حيطان.')); }
+    };
+    addTrigger(-1.3,1.3,-8.2,-7.4,()=>{
+      sched(3500,()=>{ if(l1.stage===0){ l1.stage=1; P.set(1); sfxTick(true);
+        say('…الصورة دي اتغيرت.',2.0); say('فيه شخص زيادة واقف في آخرها… لابس نفس هدومي.',3.0);
+        obj('ارجعي بصّي على الصورة من قريب'); } });
+    },true);
+    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
+    obj('امشي في الممر… وبصّي حوالينك');
+    startAt(2500,()=>say('قدامي ممر فاضي.',2.2));
+    startAt(5200,()=>say('ومفيش أي صوت… لا تكييف ولا موسيقى.',3.0));
+    startAt(8600,()=>say('غير خطواتي.',2.2));
+  }
+
+  /* 2: ١٣٠٣½ */
+  else if(n===2){
+    setDrone(.09,210);
+    buildCorridor(26,styles[2],[
+      {s:-1,z:-6,n:1302},{s:1,z:-8,n:1301},{s:1,z:-12,n:1303},{s:-1,z:-16,n:1304},
+      {s:1,z:-19,n:1305},{s:-1,z:-22,n:1306},{s:1,z:-23.2,n:1307},
+      {s:1,z:-15.6,n:1303.5,real:true,prompt:'افتحي الباب الغريب',color:0x0c0a0a,fn:()=>say('رقمه… ١٣٠٣ ونص.',2.2)}
+    ]);
+    buildMissingElevator(-26,true,['لسه مفيش مصعد خلف الأبواب.']);
+    const phC=drawPhotoSleep();
+    const r=buildRoom(1,-15.6,{suitcase:true,phone:true,wallA:'#3a1414',wallB:'#2c0f0f',carA:'#301410',carB:'#190806',
+      light:0xff9a5a,li:.55,flicker:true,blk:0x33201c});
+    const frame=box(.3,.24,.03,r.bedX,.7,r.bedZ-.46,std(0x241d10,{roughness:.4}),false); frame.rotation.x=-.5;
+    const phPlane=new THREE.Mesh(new THREE.PlaneGeometry(.26,.2),new THREE.MeshStandardMaterial({map:tx(phC),roughness:.85}));
+    phPlane.position.set(r.bedX,.72,r.bedZ-.43); phPlane.rotation.x=-1.1; world.add(phPlane);
+    const l2={seen:false};
+    interactables.push({x:r.bedX,y:.72,z:r.bedZ-.43,r:1.7,prompt:'بصّي على الصورة اللي على السرير',fn:()=>{
+      if(l2.seen)return; l2.seen=true; sfxStatic();
+      openNote(phC,'صورة… ليا. بتتصوّرني ونا نايمة. مين اللي كان واقف هنا؟');
+      noteOnClose=()=>{ sched(1600,()=>{ sfxKnock(.5); say('…خبط. بعيد. تحتنا.',2.2);
+        sched(2400,()=>gotoLevel(3,'٣:١٥.')); }); };
+    }});
+    addTrigger(1.66,6.4,-18.6,-13.0,()=>{ say('دي غرفتي…',2.0); say('نفس السرير. نفس الشنطة. نفس التليفون.',3.0);
+      obj('فيه حاجة مرمية على السرير… بصّي عليها'); },true);
+    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
+    obj('فيه باب جديد بين ١٣٠٣ و ١٣٠٥… ١٣٠٣½');
+    startAt(2200,()=>say('الحيطان… اتغيرت. والصور كلها اتشالت.',2.8));
+  }
+
+  /* 3: الساعة */
+  else if(n===3){
+    setDrone(.08,240);
+    buildCorridor(26,styles[3],[
+      {s:-1,z:-14,n:1302},{s:1,z:-6,n:1301},{s:1,z:-12,n:1303},{s:1,z:-18,n:1305},
+      {s:1,z:-22,n:1307},{s:-1,z:-19,n:1304}
+    ]);
+    buildMissingElevator(-26,false,['مفيش حاجة. النور مالي المكان بس.']);
+    const cc=mkCanvas(512,512); drawClock(cc,3,15);
+    const ct=new THREE.CanvasTexture(cc); ct.encoding=THREE.sRGBEncoding;
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(.48,.05,10,40),std(0x241d10,{roughness:.4,metalness:.4}));
+    rim.position.set(-1.47,2.0,-8); rim.rotation.y=Math.PI/2; world.add(rim);
+    const face=new THREE.Mesh(new THREE.CircleGeometry(.46,40),new THREE.MeshStandardMaterial({map:ct,roughness:.6}));
+    face.position.set(-1.45,2.0,-8); face.rotation.y=Math.PI/2; world.add(face);
+    const l3={t:0,to14:false,to13:false};
+    const flash=new THREE.PointLight(0xffffff,0,16,1.6); flash.position.set(0,2.4,-2); world.add(flash);
+    levelTick=(dt,t)=>{ l3.t+=dt;
+      const d=Math.hypot(player.x+1.4,player.z+8);
+      if(!l3.to14&&l3.t>7&&d<10){ l3.to14=true; drawClock(cc,3,14); ct.needsUpdate=true; sfxTick(true);
+        say('٣:١٤…',1.8); say('كانت ٣:١٥ من شوية. الساعة بتعدّ للورا.',3.0); obj('بصّي على الساعة تاني'); }
+      if(l3.to14&&!l3.to13&&l3.t>20){ l3.to13=true; drawClock(cc,3,13); ct.needsUpdate=true; sfxTick(true); clock13(); }
+    };
+    async function clock13(){
+      say('…٣:١٣.',1.6); await sleep(900);
+      lightScale=.03; sfxStatic(); sayNow('النور!',1.2);
+      await sleep(1100); sfxStep(.5,.5,.6); say('خطوة.',1.0);
+      await sleep(1300); sfxStep(.55,-.4,.6); sched(280,()=>sfxStep(.55,.4,.6)); say('خطوتين…',1.2);
+      await sleep(1500);
+      say('حد بيجري في الممر!',1.4);
+      let i=0; const run=setInterval(()=>{ sfxStep(.6,(Math.random()-.5)*1.4,.7); if(++i>11)clearInterval(run); },170);
+      await sleep(2300);
+      flash.intensity=3.2; sfxClick(); say('…',.7);
+      await sleep(650); flash.intensity=0; lightScale=1;
+      say('مفيش حد.',1.8); await sleep(1600); say('طبعًا مفيش حد.',2.0);
+      await sleep(2200); gotoLevel(4,'امشي… ولا تلفي وراك.');
+    }
+    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
+    obj('فيه ساعة على الحيط… امشي ناحيتها');
+    startAt(2000,()=>say('التكييف وقع. حتى صوته مبيستمعش هنا.',2.8));
+    startAt(5500,()=>say('دقّات… بطيئة. من حواليّ.',2.2));
+  }
+
+  /* 4: الخطوات */
+  else if(n===4){
+    setDrone(.12,300);
+    buildCorridor(40,styles[4],[
+      {s:1,z:-8,n:1301},{s:-1,z:-14,n:1302},{s:1,z:-20,n:1303},{s:-1,z:-26,n:1304},
+      {s:1,z:-32,n:1305},{s:-1,z:-36,n:1306}
+    ]);
+    buildMissingElevator(-40,false,['غرقانة في الضلمة. النور الوحيد قدامك.']);
+    echoMode=true;
+    const glowL=new THREE.PointLight(0xfff6e0,0,12,1.6); glowL.position.set(0,2.5,-3); world.add(glowL);
+    const glowS=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8),new THREE.MeshBasicMaterial({color:0xfff6e0}));
+    glowS.position.set(0,2.9,-.35); world.add(glowS);
+    const l4={t:0,behindDone:false,arrived:false};
+    levelTick=(dt,t)=>{ l4.t+=dt;
+      const d=Math.abs(player.z+3);
+      glowL.intensity=Math.max(0,2.6-d*.12)+Math.sin(t*2.2)*.15;
+      if(!l4.behindDone&&(t-lastMove)>2.4&&l4.t>6){ l4.behindDone=true;
+        sfxStep(.7,0,.45); sched(700,()=>{ sayNow('ده مش صدى.',2.0);
+          obj(IS_TOUCH?'ادفعي العصا للآخر… واجري!':'اجري!… Shift'); }); }
+      if(!l4.arrived&&player.z>-4.6){ l4.arrived=true; startHeart(120);
+        say('النور… اقرّب. اقرّب.',1.8);
+        sched(1400,()=>gotoLevel(5,'١٣٠٧.')); }
+    };
+    player.x=0; player.z=-38.5; yaw=Math.PI; pitch=0;
+    obj('امشي ناحية النور في آخر الممر');
+    startAt(2500,()=>say('الصوت… لسه معايا.',2.2));
+    startAt(6000,()=>say('خطوة ورا كل خطوة بتاعتي.',2.4));
+    startAt(10000,()=>say('بسرعتي؟… لأ. أسرع.',2.2));
+  }
+
+  /* 5: المفتاح والتليفون */
+  else if(n===5){
+    setDrone(.1,200);
+    buildCorridor(26,styles[5],[
+      {s:1,z:-12,n:1301},{s:-1,z:-14,n:1302},{s:1,z:-16,n:1303},{s:-1,z:-18,n:1304},
+      {s:1,z:-20,n:1305},{s:-1,z:-22,n:1306},{s:1,z:-24,n:1308},
+      {s:1,z:-8,n:1307,real:true,prompt:'افتحي غرفة ١٣٠٧',color:0x2c2418,
+       gate:()=>hasKey, lockedMsg:'مقفول… لازم المفتاح بتاعها.',
+       fn:()=>{ say('…فاضية.',1.8); sched(1200,()=>{ startRing(); obj('ردي على التليفون… هو بيرن جوه الغرفة'); }); }}
+    ]);
+    buildMissingElevator(-26,false,['لسه مفيش مصعد. الممر ده بيعدّي الوقت بس.']);
+    buildRoom(1,-8,{empty:true,wallA:'#3a2c1c',wallB:'#2c2214',carA:'#2c2214',carB:'#150f08',light:0xffffff,li:.85});
+    makePhone(4.2,.02,-8,Math.PI/2);
+    const l5={answered:false};
+    interactables.push({x:4.2,y:.4,z:-8,r:1.8,prompt:'ردي على التليفون',fn:()=>{
+      if(l5.answered)return; l5.answered=true; stopRing(); sfxClick();
+      (async()=>{ say('ألو؟',1.6); await sleep(1400); say('…',1.0); await sleep(1200);
+        say('الصوت ده… صوتي.',2.0); speakAr('متفتحيش الباب');
+        say('صوتي بيقول: "متفتحيش الباب."',2.6); await sleep(1600);
+        sfxKnock(1.0); shake=.5; await sleep(700);
+        sfxKnock(1.1); shake=.6; await sleep(700);
+        sfxKnock(1.2); shake=.8; say('الباب…؟ ده أنا جوه.',2.0);
+        await sleep(2200); gotoLevel(6,'Room 1309.'); })();
+    }});
+    const keyM=makeKey(0,.03,-3.2,'1307');
+    const keyIt={x:0,y:.3,z:-3.2,r:1.8,prompt:'التقطي المفتاح',fn:()=>{
+      world.remove(keyM); keyIt.enabled=false; hasKey=true; sfxClick();
+      say('مفتاح… عليه ١٣٠٧.',2.2); obj('افتحي الغرفة ١٣٠٧ — على يمينك'); }};
+    interactables.push(keyIt);
+    player.x=0; player.z=-1.6; yaw=0; pitch=0;
+    obj('فيه حاجة لامعة على الأرض قدامك');
+    startAt(1800,()=>say('الممر ده… هادي أكتر من اللي فاتوا.',2.6));
+    startAt(5000,()=>say('كتير أكتر من اللازم.',2.0));
+  }
+
+  /* 6: انتِ نايمة */
+  else if(n===6){
+    setDrone(.11,260);
+    buildCorridor(26,styles[6],[
+      {s:-1,z:-5,n:1302},{s:-1,z:-14,n:1304},{s:-1,z:-20,n:1306},
+      {s:1,z:-6,n:1301},{s:1,z:-12,n:1303},{s:1,z:-18,n:1305},{s:1,z:-22,n:1307},
+      {s:-1,z:-9,n:1309,real:true,prompt:'افتحي غرفة ١٣٠٩',color:0x1c2436}
+    ]);
+    const missE=buildMissingElevator(-26,false,['لسه فاضي… لسه.']);
+    const r=buildRoom(-1,-9,{wallA:'#1c2436',wallB:'#141a29',carA:'#131a28',carB:'#090d15',
+      light:0x5a7aff,li:.4,window:true,sleeper:true,blk:0x232c44});
+    /* نور صغير فوق باب ١٣٠٩ عشان يبان */
+    const dLight=new THREE.PointLight(0x6a8aff,.7,4,2); dLight.position.set(-1.1,2.35,-9); world.add(dLight);
+    const l6={seen:false,breathe:false};
+    addTrigger(-6.4,-1.66,-11.5,-6.5,()=>{ if(!l6.breathe){ l6.breathe=true; startBreath();
+      say('فيه صوت نَفَس… جوه الغرفة.',2.6); obj('…فيه حاجة على السرير. بصّي عليها'); } },true);
+    levelTick=(dt,t)=>{
+      if(r.sleeper){ const b=r.sleeper.children[0]; const s=1+Math.sin(t*.9)*.018; b.scale.y=.34*s; }
+      if(!l6.seen){ const d=Math.hypot(player.x-r.bedX,player.z-r.bedZ);
+        if(d<2.0){ l6.seen=true; frozen=true; startHeart(100);
+          (async()=>{ say('دي… أنا.',1.8); await sleep(1900);
+            say('نايمة. على السرير.',2.2); await sleep(2300);
+            speakAr('أنا مين؟'); say('…طيب أنا مين؟',2.6); await sleep(2600);
+            shake=.7; sfxWhisper(); await sleep(1400);
+            sfxDing(true); stopHeart(); stopBreath();
+            say('المصعد… رجع.',2.0); await sleep(1800);
+            world.remove(missE.grp); colliders=colliders.filter(c=>c!==missE.col);
+            if(missE.it) missE.it.enabled=false;
+            const s=new THREE.Mesh(new THREE.PlaneGeometry(1.15,.3),new THREE.MeshBasicMaterial({map:tx(texSign('EXIT','#4de07a','#08140c'))}));
+            s.position.set(0,2.62,-25.95); world.add(s);
+            buildElevator(-26,{call:true,mode:'final'});
+            const sl=new THREE.PointLight(0xfff4da,.7,5,2); sl.position.set(0,2.3,-25.2); world.add(sl);
+            obj('ارجعي للمصعد — الزرار على يمين بابه'); frozen=false; })(); } }
+    };
+    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
+    obj('باب واحد بس منوّر هنا… ١٣٠٩ على الشمال');
+    startAt(2200,()=>say('النور أزرق. زي… مستشفى بعد المعاد.',2.8));
+    startAt(5800,()=>say('مفيش أبواب بتفتح هنا. غير واحد.',2.4));
+  }
+
+  /* 7: النهاية */
+  else if(n===7){
+    setDrone(.02,120);
+    buildCorridor(26,styles[7],[
+      {s:-1,z:-6,n:102},{s:1,z:-9,n:104},{s:-1,z:-12,n:103},
+      {s:1,z:-15,n:106},{s:-1,z:-18,n:105},{s:1,z:-21,n:108}
+    ]);
+    buildElevator(-26,{mode:'final'}); ELV.open();
+    if(interactables.length) interactables[interactables.length-1].enabled=false;
+    const P=makePainting(-1.46,1.75,-22,Math.PI/2); P.set(3);
+    const e7={seen:false};
+    interactables.push({x:-1.46,y:1.75,z:-22,r:2.0,prompt:'بصّي على الصورة',fn:()=>{
+      if(e7.seen)return; e7.seen=true; frozen=true; sfxWhisper();
+      const c=mkCanvas(640,440); drawPainting(c,3);
+      openNote(c,'العيلة واقفة قصاد الفندق… وانتِ واقفة معاهم.');
+      noteOnClose=()=>{ sched(1800,async()=>{
+        await fade(1,2.2); setDrone(0,80); stopLoops();
+        await sleep(2400); sfxDing(); await sleep(1200);
+        fadeEl.style.transitionDuration='0s'; fadeEl.style.opacity=0; fadeBlack=false;
+        gameOver=true; try{document.exitPointerLock();}catch(e){}
+        endEl.style.display='flex'; }); };
+    }});
+    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
+    startAt(1800,()=>say('…ده الممر بتاع الفندق.',2.4));
+    startAt(5000,()=>say('بس هادي. وفاضي. ومفيش صوت… حتى خطواتي بقت همس.',3.4));
+    obj('فيه صورة على الحيط قصادك… بصّي عليها');
+  }
+}
+
+/* تريجرز */
+function addTrigger(x1,x2,z1,z2,fn,once=true){ triggers.push({x1:Math.min(x1,x2),x2:Math.max(x1,x2),z1:Math.min(z1,z2),z2:Math.max(z1,z2),fn,once,prev:false}); }
+function updateTriggers(){
+  for(const tr of triggers){
+    const inT=player.x>tr.x1-.3&&player.x<tr.x2+.3&&player.z>tr.z1-.3&&player.z<tr.z2+.3;
+    if(inT&&!tr.prev){ tr.prev=true; if(tr.once){ const i=triggers.indexOf(tr); if(i>=0)triggers.splice(i,1); } tr.fn(); }
+    else if(!inT) tr.prev=false;
+  }
+}
+
+/* رحلات المصعد */
+async function startRideIntro(){
+  frozen=true; lbEl.classList.add('on'); startHum();
+  ELV.close(); await sleep(1900);
+  for(const n of ['٥','٦','٧','٨','٩','١٠','١١']){ showFloor(n); sfxClick(); await sleep(720); }
+  showFloor('١٢'); sfxDing(); await sleep(1500);
+  say('…ليه مش واقف؟',1.6); await sleep(1500);
+  stopHum(); showFloor('١٣',true,false); sfxDing(true); shake=.8; sfxStatic();
+  await sleep(2000);
+  gotoLevel(1,'مفيش دور اسمه ١٣ في الفندق ده.');
+}
+async function startRideFinal(){
+  frozen=true; lbEl.classList.add('on'); startHum(); startHeart(110);
+  ELV.close(); await sleep(2000);
+  for(const n of ['١٢','١١','١٠','٩','٨','٧','٦','٥','٤','٣','٢','١']){ showFloor(n); sfxClick(); await sleep(560); }
+  showFloor('…',false); await sleep(1600); stopHeart();
+  showFloor('١٣',true,false); sfxDing(true); shake=1.0;
+  await sleep(2600); stopHum();
+  gotoLevel(7,null);
+}
+
+/* ================== الإدخال: كمبيوتر + لمس ================== */
+const keys={};
+addEventListener('keydown',e=>{ keys[e.code]=true; if(e.code==='KeyE')tryInteract();
+  if(e.code==='Escape'&&!document.pointerLockElement&&started&&!gameOver){
+    paused=!paused; pauseEl.style.display=paused?'flex':'none'; } });
+addEventListener('keyup',e=>{ keys[e.code]=false; });
+function tryLock(){ try{ const p=renderer.domElement.requestPointerLock(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
+document.addEventListener('pointerlockchange',()=>{
+  const locked=document.pointerLockElement===renderer.domElement;
+  if(locked){ hadLock=true; paused=false; expectUnlock=false; pauseEl.style.display='none'; }
+  else if(hadLock&&started&&!panelOpen&&!noteOpen&&!gameOver){
+    if(expectUnlock){ expectUnlock=false; return; }
+    paused=true; pauseEl.style.display='flex';
+  }
+});
+pauseEl.addEventListener('click',()=>{ paused=false; pauseEl.style.display='none'; if(!IS_TOUCH)tryLock(); });
+
+let dragging=false,lx=0,ly=0;
+addEventListener('mousedown',e=>{ if(!started||gameOver||e.target!==renderer.domElement||document.pointerLockElement)return;
+  dragging=true; lx=e.clientX; ly=e.clientY; });
+addEventListener('mouseup',()=>dragging=false);
+addEventListener('mousemove',e=>{
+  if(!started||gameOver||paused)return;
+  if(document.pointerLockElement===renderer.domElement){
+    yaw-=e.movementX*.0021; pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.0021));
+  } else if(dragging){
+    yaw-=(e.clientX-lx)*.0032; pitch=Math.max(-1.35,Math.min(1.35,pitch-(e.clientY-ly)*.0032));
+    lx=e.clientX; ly=e.clientY;
+  }
+});
+
+let joyId=null,joyOX=0,joyOY=0; const joyVec={x:0,y:0}; let joyRun=false,lookId=null,lookX=0,lookY=0;
+function joyReset(){ joyVec.x=0; joyVec.y=0; joyRun=false; joyId=null;
+  joyKnob.style.transform='translate(0,0)';
+  joyBase.style.left='26px'; joyBase.style.top='auto'; joyBase.style.bottom='26px'; }
+function bindTouch(cnv){
+  cnv.addEventListener('touchstart',e=>{ e.preventDefault(); if(!started||gameOver||paused)return;
+    for(const t of e.changedTouches){
+      if(t.clientX<innerWidth*.45&&joyId===null){ joyId=t.identifier; joyOX=t.clientX; joyOY=t.clientY;
+        joyBase.style.left=(t.clientX-60)+'px'; joyBase.style.top=(t.clientY-60)+'px'; joyBase.style.bottom='auto'; }
+      else if(lookId===null){ lookId=t.identifier; lookX=t.clientX; lookY=t.clientY; } }
+  },{passive:false});
+  cnv.addEventListener('touchmove',e=>{ e.preventDefault(); if(!started||gameOver||paused)return;
+    for(const t of e.changedTouches){
+      if(t.identifier===joyId){
+        let dx=t.clientX-joyOX, dy=t.clientY-joyOY; const d=Math.hypot(dx,dy), max=55;
+        if(d>max){ dx=dx/d*max; dy=dy/d*max; }
+        joyVec.x=dx/max; joyVec.y=dy/max; joyRun=(d/max)>.85;
+        joyKnob.style.transform='translate('+dx+'px,'+dy+'px)';
+      } else if(t.identifier===lookId){
+        yaw-=(t.clientX-lookX)*.0042; pitch=Math.max(-1.35,Math.min(1.35,pitch-(t.clientY-lookY)*.0042));
+        lookX=t.clientX; lookY=t.clientY; } }
+  },{passive:false});
+  const end=e=>{ for(const t of e.changedTouches){
+      if(t.identifier===joyId) joyReset();
+      if(t.identifier===lookId) lookId=null; } };
+  cnv.addEventListener('touchend',end); cnv.addEventListener('touchcancel',end);
+}
+btnE.addEventListener('touchstart',e=>{ e.preventDefault(); tryInteract(); },{passive:false});
+btnPause.addEventListener('touchstart',e=>{ e.preventDefault(); if(!started||gameOver)return;
+  paused=true; pauseEl.style.display='flex'; },{passive:false});
+
+function tryInteract(){
+  if(!started||gameOver||paused||frozen||panelOpen)return;
+  if(noteOpen){ closeNote(); return; }
+  if(curInter&&curInter.enabled!==false) curInter.fn();
+}
+
+/* ================== الحلقة الرئيسية ================== */
+function collide(px,pz){
+  const r=.32;
+  for(let k=0;k<2;k++)
+  for(const c of colliders){
+    if(c.y1>=PLAYER_H) continue;
+    if(px>c.x1-r&&px<c.x2+r&&pz>c.z1-r&&pz<c.z2+r){
+      const d1=px-(c.x1-r),d2=(c.x2+r)-px,d3=pz-(c.z1-r),d4=(c.z2+r)-pz;
+      const m=Math.min(d1,d2,d3,d4);
+      if(m===d1)px=c.x1-r; else if(m===d2)px=c.x2+r; else if(m===d3)pz=c.z1-r; else pz=c.z2+r;
+    }
+  }
+  return [px,pz];
+}
+function updateInteract(){
+  curInter=null; let best=1e9;
+  const cp=Math.cos(pitch), fx=-Math.sin(yaw)*cp, fy=Math.sin(pitch), fz=-Math.cos(yaw)*cp;
+  for(const it of interactables){
+    if(it.enabled===false)continue;
+    const dx=it.x-player.x, dy=it.y-1.62, dz=it.z-player.z;
+    const d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    if(d>it.r)continue;
+    const dot=(dx*fx+dy*fy+dz*fz)/(d||1);
+    if(dot<.62)continue;
+    if(d<best){best=d;curInter=it;}
+  }
+  promptTxt.textContent=curInter?curInter.prompt:'';
+  promptEl.classList.toggle('show',!!curInter&&!noteOpen&&!panelOpen&&!paused&&!frozen);
+  btnE.classList.toggle('hot',!!curInter&&!noteOpen&&!panelOpen&&!paused&&!frozen);
+}
+function tick(){
+  requestAnimationFrame(tick);
+  if(!renderer)return;
+  const dt=Math.min(clockT.getDelta(),.05), t=clockT.elapsedTime;
+  if(started&&!gameOver&&frozen&&fadeBlack&&t-blackSince>20){
+    fadeBlack=false; fadeTxt.style.opacity=0;
+    fadeEl.style.transitionDuration='1s'; fadeEl.style.opacity=0;
+    frozen=false; flushStart();
+  }
+  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; a.t+=dt;
+    let k=Math.min(1,a.t/a.dur); k=k*k*(3-2*k); a.fn(k);
+    if(a.t>=a.dur){ anims.splice(i,1); if(a.done)a.done(); } }
+  for(const f of flickers){ f.L.intensity=f.base*(.78+.22*(Math.sin(t*f.sp)*Math.sin(t*f.sp*.37+2)+.4*Math.random()*f.amp))*lightScale; }
+  let spd=0;
+  if(started&&!paused&&!frozen&&!gameOver&&!panelOpen&&!noteOpen){
+    const run=keys['ShiftLeft']||keys['ShiftRight']||joyRun;
+    let mx=0,mz=0;
+    if(keys['KeyW']||keys['ArrowUp'])mz+=1; if(keys['KeyS']||keys['ArrowDown'])mz-=1;
+    if(keys['KeyA']||keys['ArrowLeft'])mx-=1; if(keys['KeyD']||keys['ArrowRight'])mx+=1;
+    if(joyId!==null){ mx=joyVec.x; mz=-joyVec.y; }
+    if(mx||mz){
+      spd=run?4.6:2.25;
+      const l=Math.hypot(mx,mz); mx/=l; mz/=l;
+      const fx=-Math.sin(yaw),fz=-Math.cos(yaw), rx=Math.cos(yaw),rz=-Math.sin(yaw);
+      let nx=player.x+(fx*mz+rx*mx)*spd*dt, nz=player.z+(fz*mz+rz*mx)*spd*dt;
+      [nx,nz]=collide(nx,nz); player.x=nx; player.z=nz;
+      stepAcc+=spd*dt; bobP+=spd*dt*2.5; lastMove=t;
+      if(stepAcc>(run?.5:.72)){ stepAcc=0; sfxStep(run?.5:.34);
+        if(echoMode) sched(380,()=>sfxStep(run?.42:.24,(Math.random()-.5)*.3,.5)); }
+    }
+  }
+  const bobY=Math.sin(bobP)*.042*Math.min(1,spd/2.2)+Math.sin(t*1.3)*.006;
+  camera.position.set(player.x+(Math.random()-.5)*shake*.06,1.62+bobY+(Math.random()-.5)*shake*.05,player.z+(Math.random()-.5)*shake*.06);
+  camera.rotation.set(pitch,yaw,Math.sin(bobP)*.006*Math.min(1,spd/2.2));
+  shake=Math.max(0,shake-dt*1.4);
+  if(started&&!gameOver&&!paused){ updateTriggers(); updateInteract(); if(levelTick)levelTick(dt,t); }
+  renderer.render(scene,camera);
+}
+
+/* ================== البدء ================== */
+function begin(){
+  if(started)return; started=true;
+  try{ initAudio(); if(AC.state==='suspended')AC.resume(); }catch(e){}
+  setDrone(.05,150);
+  titleEl.style.opacity=0; setTimeout(()=>titleEl.style.display='none',950);
+  fadeEl.style.transitionDuration='1.6s'; fadeEl.style.opacity=0; fadeBlack=false;
+  frozen=false;
+  if(IS_TOUCH){ try{ if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen(); }catch(e){} }
+  else tryLock();
+  sched(1800,()=>say('…فين أنا؟',2.2));
+  sched(4400,()=>say('مش فاكرة إزاي جيت هنا.',2.5));
+  sched(7600,()=>{ say('مفيش صوت… خالص.',2.2); obj('اقرئي الورقة على الترابيزة… وخدي المفتاح'); });
+}
+titleEl.addEventListener('click',begin);
+ $('again').addEventListener('click',()=>location.reload());
+ $('pauseHelp').innerHTML=IS_TOUCH
+ ? 'المسي الشاشة عشان ترجعي للغرفة ١٣'
+ : 'اضغطي في أي مكان عشان ترجعي للغرفة ١٣<br>W A S D للحركة — الماوس للنظر — E للتفاعل — Shift للجري';
+
+init(); bindTouch(renderer.domElement); applyIcon(); buildLevel(0); tick();
+</script>
+</body>
+</html>
