@@ -846,7 +846,7 @@ function buildFloor12(){
   // الغرف
   const r07=buildRoom(1,-11,{suitcase:true,window:true});
   const r09=buildRoom(-1,-14.5,{sleeper:true});
-  const r13=buildRoom(-1,-22,{light:0xff3524,li:.5,flicker:true,wallA:'#4a2a22',wallB:'#3a2018',carA:'#33150f',carB:'#170605',blk:0x3a1210});
+  const r13=buildRoom(-1,-22,{light:0xff3524,li:.5,flicker:true,wallA:'#4a2a22',wallB:'#3a2018',carA:'#33150f',carB:'#170605',blk:0x3a1210,sleeper:true});
   // صورة الغرفة ١٢١٣ (بالناس الحمرا)
   const p3=makePainting(-6.38,1.7,-22,Math.PI/2); p3.set(3);
   interactables.push({x:-6.1,y:1.6,z:-22,r:2.1,prompt:'بصّي للصورة',fn:()=>{ sfxWhisper(); say('نفس بيت الصورة اللي في الممر… بس الناس الحمرا هنا بتبصّلك.',2.8); }});
@@ -1299,13 +1299,13 @@ function loop(){
   const dt=Math.min(.05,clockT.getDelta()), t=clockT.elapsedTime;
   if(started&&!paused&&!gameOver){
     if(!frozen&&!panelOpen&&!noteOpen)updatePlayer(dt);
-    for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; a.t+=dt/a.dur; const k=Math.min(1,a.t); a.fn(k);
+    for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; a.t+=dt/a.dur; const k=Math.min(1,a.t); try{a.fn(k);}catch(e){}
       if(k>=1){ anims.splice(i,1); if(a.done)a.done(); } }
     for(const f of flickers){ const n=Math.sin(t*f.sp)*Math.sin(t*f.sp*.63+1.3);
       let v=f.base*lightScale*(1+f.amp*.55*n); if(Math.random()<.004)v*=.12; f.L.intensity=v; }
     if(!frozen)for(const tr of triggers){ if(tr.done)continue;
       if(Math.hypot(player.x-tr.x,player.z-tr.z)<tr.r){ tr.done=true; tr.fn(); } }
-    if(levelTick)levelTick(dt,t);
+    if(levelTick){try{levelTick(dt,t);}catch(e){}}
     scanInteract();
   }
   const bob=Math.sin(bobP)*.05*moveAmt;
