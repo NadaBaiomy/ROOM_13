@@ -26,6 +26,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Am
 #prompt{position:fixed;bottom:26%;left:0;width:100%;text-align:center;z-index:32;opacity:0;transition:opacity .15s;pointer-events:none;font-size:22px}
 #prompt.show{opacity:1}
 #prompt .key{display:inline-block;border:1.5px solid #9c9280;border-radius:4px;padding:0 9px;margin-left:10px;font-weight:700;color:#c9bfa8;background:rgba(0,0,0,.5);vertical-align:middle}
+body.touch #prompt .key{display:none}
 #crosshair{position:fixed;top:50%;left:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgba(230,220,200,.55);z-index:32}
 #floorDisplay{position:fixed;top:13vh;width:100%;text-align:center;z-index:36;font-family:'Rakkas';font-size:76px;color:#cfc5ac;text-shadow:0 3px 14px #000;opacity:0;transition:opacity .3s;pointer-events:none}
 #floorDisplay.show{opacity:1}
@@ -116,8 +117,9 @@ body.touch #touchUI{display:block}
 <script>
 /* ============================================================
    الغرفة ١٣ — كمبيوتر + موبايل، ملف واحد
-   الإصدار الخامس: إصلاح لغز الصورة (كان محتاج تبعدي وترجعي
-   من غير ما يقولك) + إرشاد أوضح في كل المستويات
+   الإصدار السادس: اللعبة كاملة —
+   اللوبي ← الدور ١٢ (لغز الصورة + لغز الساعة + التليفون + ١٢١٣)
+   ← الدور ١٣ (الممر الأحمر + الظلال + الغرفة ١٣١٣ + النهاية)
    ============================================================ */
 const $=id=>document.getElementById(id);
 const subEl=$('subtitle'),objEl=$('objective'),promptEl=$('prompt'),promptTxt=$('promptText'),
@@ -247,7 +249,7 @@ function startBreath(){ stopBreath(); breathInt=setInterval(sfxBreath,3400); }
 function stopBreath(){ if(breathInt){clearInterval(breathInt);breathInt=null;} }
 function stopLoops(){ stopRing(); stopHum(); stopHeart(); stopBreath(); }
 function speakAr(t){ try{ if(!('speechSynthesis' in window))return; const u=new SpeechSynthesisUtterance(t);
-  u.lang='ar-EG'; u.rate=.85; u.pitch=1.05; const v=speechSynthesis.getVoices().find(v=>/^ar/i.test(v.lang)); if(v)u.voice=v;
+  u.lang='ar-EG'; u.rate=.85; u.pitch=1.05; u.volume=.7; const v=speechSynthesis.getVoices().find(v=>/^ar/i.test(v.lang)); if(v)u.voice=v;
   speechSynthesis.speak(u); }catch(e){} }
 
 /* ================== خامات مرسومة بالـ canvas ================== */
@@ -326,6 +328,21 @@ function texPaper(){
   x.save(); x.translate(170,150); x.rotate(-.06); x.font='italic bold 44px Georgia'; x.fillText("Don't take",0,0); x.restore();
   x.save(); x.translate(170,215); x.rotate(.04); x.font='italic bold 44px Georgia'; x.fillText('the 13th floor.',0,0); x.restore();
   x.strokeStyle='rgba(42,36,24,.5)'; x.lineWidth=2; x.beginPath(); x.moveTo(60,300); x.lineTo(280,290); x.stroke();
+  return c;
+}
+/* مفكرة — ورق مسطّر بخط مخربش */
+function texDiary(){
+  const c=mkCanvas(360,460),x=c.getContext('2d');
+  x.fillStyle='#c4b78e'; x.fillRect(0,0,360,460);
+  x.strokeStyle='rgba(90,75,45,.35)'; x.lineWidth=1.5;
+  for(let y=70;y<450;y+=34){ x.beginPath(); x.moveTo(24,y); x.lineTo(336,y); x.stroke(); }
+  for(let i=0;i<26;i++){ x.fillStyle='rgba(70,55,30,'+(.05+Math.random()*.08)+')'; x.beginPath(); x.arc(Math.random()*360,Math.random()*460,Math.random()*36,0,7); x.fill(); }
+  x.strokeStyle='rgba(40,32,18,.75)'; x.lineWidth=2.2; x.lineCap='round';
+  for(let y=70;y<420;y+=34){ x.beginPath(); let px=34+Math.random()*20; x.moveTo(px,y-9);
+    const n=3+Math.floor(Math.random()*4);
+    for(let i=0;i<n;i++){ px+=24+Math.random()*30; x.quadraticCurveTo(px-14,y-9-Math.random()*10,px,y-9+Math.random()*6); }
+    x.stroke(); }
+  x.strokeStyle='rgba(40,32,18,.5)'; x.strokeRect(12,12,336,436);
   return c;
 }
 function drawPainting(c,stage){ // 0 عادي | 1 فيه الشخص | 2 الشخص اختفى | 3 النهاية
@@ -410,6 +427,7 @@ let frozen=true,paused=false,started=false,gameOver=false,panelOpen=false,noteOp
 let levelToken=0,schedIds=[],curInter=null,noteOnClose=null,ELV=null;
 const PLAYER_H=1.78;
 let fadeBlack=true, blackSince=0;
+let CUR=0, escapeMode=false;
 
 function sched(ms,fn){ const id=setTimeout(fn,ms); schedIds.push(id); return id; }
 function clearSched(){ schedIds.forEach(clearTimeout); schedIds=[]; }
@@ -469,7 +487,7 @@ function makeRealDoor(side,doorZ,num,opts={}){
   const pl=new THREE.Mesh(new THREE.PlaneGeometry(.19,.15),new THREE.MeshStandardMaterial({map:tx(texPlate(num)),roughness:.5}));
   pl.position.set(-side*.045,1.6,.475); pl.rotation.y=-side*Math.PI/2; hinge.add(pl);
   const col=addCol(xw-.11,xw+.11,doorZ-.55,doorZ+.55);
-  const o={open:false,col};
+  const o={open:false,col,hinge,side};
   const it={x:xw,y:1.2,z:doorZ,r:2.1,prompt:opts.prompt||'افتحي الباب',fn:()=>{
     if(o.open)return;
     if(opts.gate&&!opts.gate()){ sfxKnock(.2); say(opts.lockedMsg||'مقفول.',2); return; }
@@ -478,6 +496,7 @@ function makeRealDoor(side,doorZ,num,opts={}){
     anims.push({t:0,dur:1.2,fn:k=>{hinge.rotation.y=side*1.85*k;}});
     if(opts.fn)opts.fn();
   }};
+  o.it=it;
   interactables.push(it);
   return o;
 }
@@ -532,7 +551,7 @@ function buildElevator(zEnd,opts={}){
       anims.push(a); elv.anim=a; }
   };
   ELV=elv;
-  interactables.push({x:.96,y:1.35,z:zEnd-1.0,r:1.7,prompt:'لوحة أزرار المصعد',fn:()=>openElevatorPanel(opts.mode||'intro')});
+  interactables.push({x:.96,y:1.35,z:zEnd-1.0,r:1.7,prompt:'لوحة أزرار المصعد',fn:()=>openElevatorPanel(escapeMode?'final':(opts.mode||'intro'))});
   if(opts.call){
     box(.16,.24,.06,1.2,1.4,zEnd+.02,std(0x1c1a16,{roughness:.4}),false);
     plane(.05,.05,1.2,1.44,zEnd+.06,new THREE.MeshBasicMaterial({color:0xd8a24a}),0,0);
@@ -598,12 +617,12 @@ function makeSleeper(x,y,z,ry=0){
   return g;
 }
 function buildRoom(side,zc,o={}){
-  const x0=side*1.66, x1=side*6.5, xm=(x0+x1)/2, zA=zc-2.5, zB=zc+2.5;
+  const x0=side*1.5, x1=side*6.5, xm=side*4.0, zA=zc-2.5, zB=zc+2.5;
   const wmat=std(0xffffff,{map:tx(texWall(o.wallA||'#5a4a36',o.wallB||'#4e3d2a',{damask:o.damask}),2,1)});
   const fmat=std(0xffffff,{map:tx(texCarpet(o.carA||'#40301f',o.carB||'#241708'),2,2)});
-  box(4.9,.08,5.0,xm,-.04,zc,fmat,false);
-  box(4.9,.1,5.0,xm,3.08,zc,std(0x8a8272),false);
-  box(.16,3.1,5.0,x1,1.55,zc,wmat); box(4.9,3.1,.16,xm,1.55,zA,wmat); box(4.9,3.1,.16,xm,1.55,zB,wmat);
+  box(5.0,.08,5.0,xm,-.04,zc,fmat,false);
+  box(5.0,.1,5.0,xm,3.08,zc,std(0x8a8272),false);
+  box(.16,3.1,5.0,x1,1.55,zc,wmat); box(5.0,3.1,.16,xm,1.55,zA,wmat); box(5.0,3.1,.16,xm,1.55,zB,wmat);
   const roomLight=new THREE.PointLight(o.light||0xffd9a0,o.li||.5,7,2); roomLight.position.set(xm,2.5,zc); world.add(roomLight);
   if(o.flicker) flickers.push({L:roomLight,base:o.li||.5,sp:9,amp:.5});
   let bedX=side*4.1, bedZ=zc-1.2, sleeper=null;
@@ -626,7 +645,6 @@ function buildRoom(side,zc,o={}){
 /* ================== نصوص وواجهة ================== */
 let subQ=[],subBusy=false,subTok=0;
 function say(text,dur=2.6){ subQ.push({text,dur}); pumpSub(); }
-/* سطر مهم بيقفز الطابور ويظهر فورًا */
 function sayNow(text,dur=2.6){
   subTok++; subQ=[];
   subEl.textContent=text; subEl.classList.add('show');
@@ -660,11 +678,12 @@ function openElevatorPanel(mode){
   if(mode==='intro'){
     panelHint.textContent='اختاري الدور… مفيش ١٣';
     [12,11,10,9,8,7,6,5,4,3,2,1].forEach(n=>{ const b=document.createElement('div'); b.className='ebtn'+(n===12?' go':'');
-      b.textContent=AR[n]; b.onclick=()=>panelPick(n); btnGrid.appendChild(b); });
+      b.textContent=AR[n]; b.onclick=()=>{ if(n===12)panelPick(12); else { sfxClick(); panelHint.textContent='الجرس بيصلّي… مفيش رد. غير ١٢.'; } }; btnGrid.appendChild(b); });
   } else {
     panelHint.textContent='…الزر الوحيد اللي شغّال';
     const b=document.createElement('div'); b.className='ebtn thirteen'; b.textContent='١٣'; b.onclick=()=>panelPick(13); btnGrid.appendChild(b);
-    [12,11,10,9,8,7,6,5,4,3,2,1].forEach(n=>{ const d=document.createElement('div'); d.className='ebtn dead'; d.textContent=AR[n]; btnGrid.appendChild(d); });
+    [12,11,10,9,8,7,6,5,4,3,2,1].forEach(n=>{ const d=document.createElement('div'); d.className='ebtn dead'; d.textContent=AR[n];
+      d.onclick=()=>{ sfxClick(); panelHint.textContent='ميت. زي الفندق.'; }; btnGrid.appendChild(d); });
   }
   panelEl.style.display='flex';
 }
@@ -679,7 +698,7 @@ function panelPick(n){
 
 /* ================== إدارة المستويات ================== */
 function rebuild(n){
-  clearSched(); stopLoops(); echoMode=false; ELV=null; lightScale=1; startQueue=[];
+  clearSched(); stopLoops(); echoMode=false; ELV=null; lightScale=1; startQueue=[]; escapeMode=false; CUR=n;
   scene.remove(world);
   world.traverse(o=>{ if(o.geometry)o.geometry.dispose();
     if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.map)m.map.dispose(); m.dispose(); }); } });
@@ -710,6 +729,7 @@ function buildCorridor(L,st,doors){
   const fmat=std(0xffffff,{map:tx(texCarpet(st.cA,st.cB),2,L/2.4)});
   box(3.0,.09,L,0,-.045,-L/2,fmat,false);
   box(3.0,.1,L,0,3.1,-L/2,std(0x746c5a,{map:tx(texWall('#6b6353','#5a5344',{}),3,L/3)}),false);
+  const realRefs=[];
   [1,-1].forEach(s=>{
     const xw=s*1.575, list=doors.filter(d=>d.s===s);
     const reals=list.filter(d=>d.real).sort((a,b)=>b.z-a.z);
@@ -722,507 +742,572 @@ function buildCorridor(L,st,doors){
       cur=d.z-.5;
     }
     seg(Math.min(cur,-L+.08),Math.max(cur,-L+.08));
-    list.forEach(d=>{ if(d.real) makeRealDoor(s,d.z,d.n,d); else makeFakeDoor(s,d.z,d.n,FAKE_LINES); });
+    list.forEach(d=>{ if(d.real){ const o=makeRealDoor(s,d.z,d.n,d); realRefs.push({n:d.n,o}); } else makeFakeDoor(s,d.z,d.n,d.lines||FAKE_LINES); });
   });
-  for(let z=-4;z>-L+2.6;z-=(st.every||4.4)) addSconce((Math.round(z/(st.every||4.4))%2===0)?1:-1,z,st.light,st.li);
-  box(3.1,3.1,.16,0,1.55,-.08,std(0x221d15));
-  box(1.15,.05,.2,0,3.0,-.12,new THREE.MeshBasicMaterial({map:tx(texSign('EXIT','#ff5a3c','#140806'))}),false);
-  const exd=new THREE.Mesh(new THREE.BoxGeometry(.05,2.1,.9),std(0x18130c)); exd.position.set(-.62,1.05,-.2); world.add(exd);
-  const exd2=exd.clone(); exd2.position.x=.62; world.add(exd2);
-  interactables.push({x:0,y:1.2,z:-.25,r:1.9,prompt:'جرّبي باب الخروج',fn:()=>{ sfxKnock(.3); say('مقفول من برّه… كأنه مرسوم على الحيط.',2.6); }});
+  return {wmat,doors:realRefs};
 }
 
-/* ============ المستويات ============ */
+/* ---- ظلام بيرجعلي: الشكل الأسود ---- */
+function makeFigure(x,z,eyes=false){
+  const g=new THREE.Group(); g.position.set(x,0,z);
+  const m=new THREE.MeshStandardMaterial({color:0x050507,roughness:1});
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.35,10),m); body.position.y=.68; g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.11,10,8),m); head.position.y=1.47; g.add(head);
+  if(eyes){ [-.045,.045].forEach(o=>{ const e=new THREE.Mesh(new THREE.SphereGeometry(.016,6,6),new THREE.MeshBasicMaterial({color:0xff2211})); e.position.set(o,1.49,.09); g.add(e); }); }
+  world.add(g); return g;
+}
+function doorOpen(o,dur=1.4){
+  if(!o||o.open)return; o.open=true;
+  if(o.it)o.it.enabled=false;
+  colliders=colliders.filter(c=>c!==o.col);
+  anims.push({t:0,dur,fn:k=>{o.hinge.rotation.y=o.side*1.85*k;}});
+}
+function doorSlam(o){
+  if(!o||!o.open)return; o.open=false; sfxDoor();
+  anims.push({t:0,dur:.22,fn:k=>{o.hinge.rotation.y=o.side*1.85*(1-k);},done:()=>{ if(!colliders.includes(o.col))colliders.push(o.col); }});
+}
+
+/* ================== المستويات ================== */
 function buildLevel(n){
-  const styles={
-    0:{wA:'#5a4a36',wB:'#4a3a27',dam:'#6b5940',cA:'#4a1f1c',cB:'#2c110e',light:0xffc27d,li:.55,fog:0x080604,fd:.05,every:4.4,hemi:0x2a2116,hemiI:.4},
-    1:{wA:'#24352a',wB:'#1b2a20',dam:'#31473a',cracks:true,cA:'#2a332c',cB:'#161d18',light:0xd8ffe4,li:.5,fog:0x060a07,fd:.075,every:4.4,hemi:0x14201a,hemiI:.35},
-    2:{wA:'#3a1414',wB:'#2c0f0f',dam:'#471a1a',cracks:true,cA:'#301410',cB:'#190806',light:0xff9a5a,li:.5,fog:0x0a0403,fd:.085,every:4.4,hemi:0x2a120c,hemiI:.33},
-    3:{wA:'#4a453c',wB:'#3c3830',cracks:true,cA:'#33302a',cB:'#1b1915',light:0xfff2c9,li:.5,fog:0x080807,fd:.075,every:4.4,hemi:0x24221c,hemiI:.35},
-    4:{wA:'#28120e',wB:'#1c0c09',cracks:true,cA:'#200d0a',cB:'#0f0503',light:0xff2a1e,li:.5,fog:0x0e0201,fd:.15,every:9,hemi:0x1c0605,hemiI:.22},
-    5:{wA:'#3a2c1c',wB:'#2c2214',dam:'#443421',cracks:true,cA:'#2c2214',cB:'#150f08',light:0xcfe0ff,li:.45,fog:0x05070c,fd:.08,every:4.4,hemi:0x141824,hemiI:.33},
-    6:{wA:'#1c2436',wB:'#141a29',dam:'#253048',cA:'#131a28',cB:'#090d15',light:0x5a7aff,li:.5,fog:0x030510,fd:.075,every:4.4,hemi:0x0d1424,hemiI:.35},
-    7:{wA:'#4e483c',wB:'#413c31',cA:'#3c352c',cB:'#221e17',light:0x8d867a,li:.35,fog:0x0b0a08,fd:.055,every:4.4,hemi:0x2a2721,hemiI:.3}
-  };
-
-  /* 0: غرفتك + ممر الدور 4 */
-  if(n===0){
-    setDrone(.05,150);
-    buildCorridor(26,styles[0],[
-      {s:1,z:-3,n:402,real:true,prompt:'افتحي باب الغرفة',fn:()=>say('خارجي بقى… ألاقي مكان يوضّح فين أنا.',2.4)},
-      {s:-1,z:-6,n:401},{s:1,z:-9,n:404},{s:-1,z:-12,n:403},
-      {s:1,z:-15,n:406},{s:-1,z:-18,n:405},{s:1,z:-21,n:408}
-    ]);
-    buildElevator(-26,{call:true,mode:'intro'});
-    buildRoom(1,-3.0,{suitcase:true,wallA:'#5a4a36',wallB:'#4a3a27',carA:'#40301f',carB:'#241708',light:0xffd9a0,li:.55,window:true});
-    box(.95,.07,.62,5.6,.76,-2.2,std(0x4a3520,{map:tx(texWood('#4a3520','rgba(0,0,0,.5)')),roughness:.55}),false);
-    [[5.22,-2.42],[5.98,-2.42],[5.22,-1.98],[5.98,-1.98]].forEach(p=>box(.06,.76,.06,p[0],.38,p[1],std(0x33240f),false));
-    addCol(5.12,6.08,-2.52,-1.88);
-    const paperC=texPaper();
-    const paper=plane(.24,.31,5.45,.81,-2.3,new THREE.MeshStandardMaterial({map:tx(paperC),roughness:.9}),-Math.PI/2,0);
-    paper.rotateZ(.35);
-    const keyM=makeKey(5.32,.81,-2.42,'402');
-    makePhone(5.85,.79,-2.1,Math.PI);
-    interactables.push({x:5.45,y:.85,z:-2.3,r:1.5,prompt:'اقرئي الورقة',fn:()=>{ sfxStatic();
-      openNote(paperC,'"متاخديش الدور التلتاشر."… مين اللي كاتب ده؟'); }});
-    const keyIt={x:5.32,y:.85,z:-2.42,r:1.5,prompt:'خدي المفتاح',fn:()=>{
-      world.remove(keyM); keyIt.enabled=false; hasKey=true; sfxClick();
-      say('مفتاح غرفتي… رقمه مش باين كويس.',2.4);
-      obj('دلوقتي افتحي باب الغرفة واخرجي للممر'); }};
-    interactables.push(keyIt);
-    interactables.push({x:5.85,y:.85,z:-2.1,r:1.5,prompt:'شيلي السماعة',fn:()=>{ sfxStatic(); say('…خط ميت.',1.6); }});
-    addTrigger(-1.5,1.5,-3.6,-2.2,()=>{ say('الممر… طبيعي جدًا.',2.2); say('ده بالظبط اللي مخوفني.',2.2);
-      obj('روحي للمصعد في آخر الممر'); },true);
-    addTrigger(-1.5,1.5,-24,-22.5,()=>{ say('المصعد… فيه زرار استدعاء على يمين بابه.',2.8); },true);
-    player.x=4.9; player.z=-4.9; yaw=-Math.PI/2+.4; pitch=0;
-  }
-
-  /* 1: الصورة — دلوقتي اللغز بيقولك بيعمل إيه في كل خطوة */
-  else if(n===1){
-    setDrone(.07,190);
-    buildCorridor(26,styles[1],[
-      {s:-1,z:-10,n:1302},{s:1,z:-6,n:1301},{s:1,z:-13,n:1303},{s:-1,z:-16,n:1304},
-      {s:1,z:-19,n:1305},{s:-1,z:-22,n:1306},{s:1,z:-23.2,n:1307}
-    ]);
-    buildMissingElevator(-26,true,['الأبواب مفتوحة… على حاجة سودا.','مفيش مصعد. مفيش غير حيطان.']);
-    const P=makePainting(-1.46,1.75,-6,Math.PI/2);
-    const l1={stage:0,revealed:0,ready:false,inStart:true,done:false,hideHinted:false,hideAt:-99};
-    /* إخفاء الشخص — بنعمله من قرب أو بضغطة E */
-    function hidePerson(){
-      if(l1.stage!==1)return;
-      l1.stage=2; l1.hideAt=clockT.elapsedTime; l1.hideHinted=false; P.set(2); sfxStatic();
-      sayNow('الشخص… مش موجود. البقعة دي فاضية.',2.6);
-      obj('ابعدي عن الصورة… وارجعي بصّي فيها');
-      sched(3000,()=>{ if(l1.stage===2) sayNow('…ابعدِ عنها. وارجعي بصّي تاني.',2.4); });
-    }
-    interactables.push({x:-1.46,y:1.75,z:-6,r:1.9,prompt:'بصّي على الصورة',fn:()=>{
-      if(l1.stage===1) hidePerson();
-      else if(l1.stage===2) sayNow('البقعة فاضية… ابعدِ عنها شوية وارجعي بصّي.',2.4);
-      else say('صورة عيلة واقفة قصاد الفندق… عادية. جدًا.',2.4);
-    }});
-    levelTick=(dt,t)=>{
-      const d=Math.hypot(player.x+1.46,player.z+6);
-      if(l1.stage===1&&d<1.5) hidePerson();
-      if(l1.stage===2&&d>2.8){
-        l1.stage=1; P.set(1); l1.revealed++; sfxTick(); sayNow('…رجع.',1.6);
-        if(l1.revealed>=1&&!l1.ready){ l1.ready=true;
-          say('بقرّب بيختفي… وتبعدي بيظهر. الصورة دي بتتحرك معايا.',3.2);
-          obj('ارجعي لمكان المصعد — في آخر الممر وراك'); }
-      }
-      /* لو واقفة قدام البقعة الفاضية لفترة طويلة — تلميح */
-      if(l1.stage===2&&d<2&&t-l1.hideAt>6&&!l1.hideHinted){ l1.hideHinted=true;
-        sayNow('…البقعة فاضية. ابعدِ عن الصورة وارجعي بصّي.',2.4); }
-      const inZ=player.z<-23.4;
-      if(!inZ) l1.inStart=false;
-      if(inZ&&!l1.inStart&&l1.ready&&!l1.done){ l1.done=true; startHeart(70);
-        say('…لا. لأ. لأ.',1.8); sched(2600,()=>gotoLevel(2,'فيه باب… مكان ما كان فيه حيطان.')); }
-    };
-    addTrigger(-1.3,1.3,-8.2,-7.4,()=>{
-      sched(3500,()=>{ if(l1.stage===0){ l1.stage=1; P.set(1); sfxTick(true);
-        say('…الصورة دي اتغيرت.',2.0); say('فيه شخص زيادة واقف في آخرها… لابس نفس هدومي.',3.0);
-        obj('ارجعي بصّي على الصورة من قريب'); } });
-    },true);
-    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
-    obj('امشي في الممر… وبصّي حوالينك');
-    startAt(2500,()=>say('قدامي ممر فاضي.',2.2));
-    startAt(5200,()=>say('ومفيش أي صوت… لا تكييف ولا موسيقى.',3.0));
-    startAt(8600,()=>say('غير خطواتي.',2.2));
-  }
-
-  /* 2: ١٣٠٣½ */
-  else if(n===2){
-    setDrone(.09,210);
-    buildCorridor(26,styles[2],[
-      {s:-1,z:-6,n:1302},{s:1,z:-8,n:1301},{s:1,z:-12,n:1303},{s:-1,z:-16,n:1304},
-      {s:1,z:-19,n:1305},{s:-1,z:-22,n:1306},{s:1,z:-23.2,n:1307},
-      {s:1,z:-15.6,n:1303.5,real:true,prompt:'افتحي الباب الغريب',color:0x0c0a0a,fn:()=>say('رقمه… ١٣٠٣ ونص.',2.2)}
-    ]);
-    buildMissingElevator(-26,true,['لسه مفيش مصعد خلف الأبواب.']);
-    const phC=drawPhotoSleep();
-    const r=buildRoom(1,-15.6,{suitcase:true,phone:true,wallA:'#3a1414',wallB:'#2c0f0f',carA:'#301410',carB:'#190806',
-      light:0xff9a5a,li:.55,flicker:true,blk:0x33201c});
-    const frame=box(.3,.24,.03,r.bedX,.7,r.bedZ-.46,std(0x241d10,{roughness:.4}),false); frame.rotation.x=-.5;
-    const phPlane=new THREE.Mesh(new THREE.PlaneGeometry(.26,.2),new THREE.MeshStandardMaterial({map:tx(phC),roughness:.85}));
-    phPlane.position.set(r.bedX,.72,r.bedZ-.43); phPlane.rotation.x=-1.1; world.add(phPlane);
-    const l2={seen:false};
-    interactables.push({x:r.bedX,y:.72,z:r.bedZ-.43,r:1.7,prompt:'بصّي على الصورة اللي على السرير',fn:()=>{
-      if(l2.seen)return; l2.seen=true; sfxStatic();
-      openNote(phC,'صورة… ليا. بتتصوّرني ونا نايمة. مين اللي كان واقف هنا؟');
-      noteOnClose=()=>{ sched(1600,()=>{ sfxKnock(.5); say('…خبط. بعيد. تحتنا.',2.2);
-        sched(2400,()=>gotoLevel(3,'٣:١٥.')); }); };
-    }});
-    addTrigger(1.66,6.4,-18.6,-13.0,()=>{ say('دي غرفتي…',2.0); say('نفس السرير. نفس الشنطة. نفس التليفون.',3.0);
-      obj('فيه حاجة مرمية على السرير… بصّي عليها'); },true);
-    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
-    obj('فيه باب جديد بين ١٣٠٣ و ١٣٠٥… ١٣٠٣½');
-    startAt(2200,()=>say('الحيطان… اتغيرت. والصور كلها اتشالت.',2.8));
-  }
-
-  /* 3: الساعة */
-  else if(n===3){
-    setDrone(.08,240);
-    buildCorridor(26,styles[3],[
-      {s:-1,z:-14,n:1302},{s:1,z:-6,n:1301},{s:1,z:-12,n:1303},{s:1,z:-18,n:1305},
-      {s:1,z:-22,n:1307},{s:-1,z:-19,n:1304}
-    ]);
-    buildMissingElevator(-26,false,['مفيش حاجة. النور مالي المكان بس.']);
-    const cc=mkCanvas(512,512); drawClock(cc,3,15);
-    const ct=new THREE.CanvasTexture(cc); ct.encoding=THREE.sRGBEncoding;
-    const rim=new THREE.Mesh(new THREE.TorusGeometry(.48,.05,10,40),std(0x241d10,{roughness:.4,metalness:.4}));
-    rim.position.set(-1.47,2.0,-8); rim.rotation.y=Math.PI/2; world.add(rim);
-    const face=new THREE.Mesh(new THREE.CircleGeometry(.46,40),new THREE.MeshStandardMaterial({map:ct,roughness:.6}));
-    face.position.set(-1.45,2.0,-8); face.rotation.y=Math.PI/2; world.add(face);
-    const l3={t:0,to14:false,to13:false};
-    const flash=new THREE.PointLight(0xffffff,0,16,1.6); flash.position.set(0,2.4,-2); world.add(flash);
-    levelTick=(dt,t)=>{ l3.t+=dt;
-      const d=Math.hypot(player.x+1.4,player.z+8);
-      if(!l3.to14&&l3.t>7&&d<10){ l3.to14=true; drawClock(cc,3,14); ct.needsUpdate=true; sfxTick(true);
-        say('٣:١٤…',1.8); say('كانت ٣:١٥ من شوية. الساعة بتعدّ للورا.',3.0); obj('بصّي على الساعة تاني'); }
-      if(l3.to14&&!l3.to13&&l3.t>20){ l3.to13=true; drawClock(cc,3,13); ct.needsUpdate=true; sfxTick(true); clock13(); }
-    };
-    async function clock13(){
-      say('…٣:١٣.',1.6); await sleep(900);
-      lightScale=.03; sfxStatic(); sayNow('النور!',1.2);
-      await sleep(1100); sfxStep(.5,.5,.6); say('خطوة.',1.0);
-      await sleep(1300); sfxStep(.55,-.4,.6); sched(280,()=>sfxStep(.55,.4,.6)); say('خطوتين…',1.2);
-      await sleep(1500);
-      say('حد بيجري في الممر!',1.4);
-      let i=0; const run=setInterval(()=>{ sfxStep(.6,(Math.random()-.5)*1.4,.7); if(++i>11)clearInterval(run); },170);
-      await sleep(2300);
-      flash.intensity=3.2; sfxClick(); say('…',.7);
-      await sleep(650); flash.intensity=0; lightScale=1;
-      say('مفيش حد.',1.8); await sleep(1600); say('طبعًا مفيش حد.',2.0);
-      await sleep(2200); gotoLevel(4,'امشي… ولا تلفي وراك.');
-    }
-    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
-    obj('فيه ساعة على الحيط… امشي ناحيتها');
-    startAt(2000,()=>say('التكييف وقع. حتى صوته مبيستمعش هنا.',2.8));
-    startAt(5500,()=>say('دقّات… بطيئة. من حواليّ.',2.2));
-  }
-
-  /* 4: الخطوات */
-  else if(n===4){
-    setDrone(.12,300);
-    buildCorridor(40,styles[4],[
-      {s:1,z:-8,n:1301},{s:-1,z:-14,n:1302},{s:1,z:-20,n:1303},{s:-1,z:-26,n:1304},
-      {s:1,z:-32,n:1305},{s:-1,z:-36,n:1306}
-    ]);
-    buildMissingElevator(-40,false,['غرقانة في الضلمة. النور الوحيد قدامك.']);
-    echoMode=true;
-    const glowL=new THREE.PointLight(0xfff6e0,0,12,1.6); glowL.position.set(0,2.5,-3); world.add(glowL);
-    const glowS=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8),new THREE.MeshBasicMaterial({color:0xfff6e0}));
-    glowS.position.set(0,2.9,-.35); world.add(glowS);
-    const l4={t:0,behindDone:false,arrived:false};
-    levelTick=(dt,t)=>{ l4.t+=dt;
-      const d=Math.abs(player.z+3);
-      glowL.intensity=Math.max(0,2.6-d*.12)+Math.sin(t*2.2)*.15;
-      if(!l4.behindDone&&(t-lastMove)>2.4&&l4.t>6){ l4.behindDone=true;
-        sfxStep(.7,0,.45); sched(700,()=>{ sayNow('ده مش صدى.',2.0);
-          obj(IS_TOUCH?'ادفعي العصا للآخر… واجري!':'اجري!… Shift'); }); }
-      if(!l4.arrived&&player.z>-4.6){ l4.arrived=true; startHeart(120);
-        say('النور… اقرّب. اقرّب.',1.8);
-        sched(1400,()=>gotoLevel(5,'١٣٠٧.')); }
-    };
-    player.x=0; player.z=-38.5; yaw=Math.PI; pitch=0;
-    obj('امشي ناحية النور في آخر الممر');
-    startAt(2500,()=>say('الصوت… لسه معايا.',2.2));
-    startAt(6000,()=>say('خطوة ورا كل خطوة بتاعتي.',2.4));
-    startAt(10000,()=>say('بسرعتي؟… لأ. أسرع.',2.2));
-  }
-
-  /* 5: المفتاح والتليفون */
-  else if(n===5){
-    setDrone(.1,200);
-    buildCorridor(26,styles[5],[
-      {s:1,z:-12,n:1301},{s:-1,z:-14,n:1302},{s:1,z:-16,n:1303},{s:-1,z:-18,n:1304},
-      {s:1,z:-20,n:1305},{s:-1,z:-22,n:1306},{s:1,z:-24,n:1308},
-      {s:1,z:-8,n:1307,real:true,prompt:'افتحي غرفة ١٣٠٧',color:0x2c2418,
-       gate:()=>hasKey, lockedMsg:'مقفول… لازم المفتاح بتاعها.',
-       fn:()=>{ say('…فاضية.',1.8); sched(1200,()=>{ startRing(); obj('ردي على التليفون… هو بيرن جوه الغرفة'); }); }}
-    ]);
-    buildMissingElevator(-26,false,['لسه مفيش مصعد. الممر ده بيعدّي الوقت بس.']);
-    buildRoom(1,-8,{empty:true,wallA:'#3a2c1c',wallB:'#2c2214',carA:'#2c2214',carB:'#150f08',light:0xffffff,li:.85});
-    makePhone(4.2,.02,-8,Math.PI/2);
-    const l5={answered:false};
-    interactables.push({x:4.2,y:.4,z:-8,r:1.8,prompt:'ردي على التليفون',fn:()=>{
-      if(l5.answered)return; l5.answered=true; stopRing(); sfxClick();
-      (async()=>{ say('ألو؟',1.6); await sleep(1400); say('…',1.0); await sleep(1200);
-        say('الصوت ده… صوتي.',2.0); speakAr('متفتحيش الباب');
-        say('صوتي بيقول: "متفتحيش الباب."',2.6); await sleep(1600);
-        sfxKnock(1.0); shake=.5; await sleep(700);
-        sfxKnock(1.1); shake=.6; await sleep(700);
-        sfxKnock(1.2); shake=.8; say('الباب…؟ ده أنا جوه.',2.0);
-        await sleep(2200); gotoLevel(6,'Room 1309.'); })();
-    }});
-    const keyM=makeKey(0,.03,-3.2,'1307');
-    const keyIt={x:0,y:.3,z:-3.2,r:1.8,prompt:'التقطي المفتاح',fn:()=>{
-      world.remove(keyM); keyIt.enabled=false; hasKey=true; sfxClick();
-      say('مفتاح… عليه ١٣٠٧.',2.2); obj('افتحي الغرفة ١٣٠٧ — على يمينك'); }};
-    interactables.push(keyIt);
-    player.x=0; player.z=-1.6; yaw=0; pitch=0;
-    obj('فيه حاجة لامعة على الأرض قدامك');
-    startAt(1800,()=>say('الممر ده… هادي أكتر من اللي فاتوا.',2.6));
-    startAt(5000,()=>say('كتير أكتر من اللازم.',2.0));
-  }
-
-  /* 6: انتِ نايمة */
-  else if(n===6){
-    setDrone(.11,260);
-    buildCorridor(26,styles[6],[
-      {s:-1,z:-5,n:1302},{s:-1,z:-14,n:1304},{s:-1,z:-20,n:1306},
-      {s:1,z:-6,n:1301},{s:1,z:-12,n:1303},{s:1,z:-18,n:1305},{s:1,z:-22,n:1307},
-      {s:-1,z:-9,n:1309,real:true,prompt:'افتحي غرفة ١٣٠٩',color:0x1c2436}
-    ]);
-    const missE=buildMissingElevator(-26,false,['لسه فاضي… لسه.']);
-    const r=buildRoom(-1,-9,{wallA:'#1c2436',wallB:'#141a29',carA:'#131a28',carB:'#090d15',
-      light:0x5a7aff,li:.4,window:true,sleeper:true,blk:0x232c44});
-    /* نور صغير فوق باب ١٣٠٩ عشان يبان */
-    const dLight=new THREE.PointLight(0x6a8aff,.7,4,2); dLight.position.set(-1.1,2.35,-9); world.add(dLight);
-    const l6={seen:false,breathe:false};
-    addTrigger(-6.4,-1.66,-11.5,-6.5,()=>{ if(!l6.breathe){ l6.breathe=true; startBreath();
-      say('فيه صوت نَفَس… جوه الغرفة.',2.6); obj('…فيه حاجة على السرير. بصّي عليها'); } },true);
-    levelTick=(dt,t)=>{
-      if(r.sleeper){ const b=r.sleeper.children[0]; const s=1+Math.sin(t*.9)*.018; b.scale.y=.34*s; }
-      if(!l6.seen){ const d=Math.hypot(player.x-r.bedX,player.z-r.bedZ);
-        if(d<2.0){ l6.seen=true; frozen=true; startHeart(100);
-          (async()=>{ say('دي… أنا.',1.8); await sleep(1900);
-            say('نايمة. على السرير.',2.2); await sleep(2300);
-            speakAr('أنا مين؟'); say('…طيب أنا مين؟',2.6); await sleep(2600);
-            shake=.7; sfxWhisper(); await sleep(1400);
-            sfxDing(true); stopHeart(); stopBreath();
-            say('المصعد… رجع.',2.0); await sleep(1800);
-            world.remove(missE.grp); colliders=colliders.filter(c=>c!==missE.col);
-            if(missE.it) missE.it.enabled=false;
-            const s=new THREE.Mesh(new THREE.PlaneGeometry(1.15,.3),new THREE.MeshBasicMaterial({map:tx(texSign('EXIT','#4de07a','#08140c'))}));
-            s.position.set(0,2.62,-25.95); world.add(s);
-            buildElevator(-26,{call:true,mode:'final'});
-            const sl=new THREE.PointLight(0xfff4da,.7,5,2); sl.position.set(0,2.3,-25.2); world.add(sl);
-            obj('ارجعي للمصعد — الزرار على يمين بابه'); frozen=false; })(); } }
-    };
-    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
-    obj('باب واحد بس منوّر هنا… ١٣٠٩ على الشمال');
-    startAt(2200,()=>say('النور أزرق. زي… مستشفى بعد المعاد.',2.8));
-    startAt(5800,()=>say('مفيش أبواب بتفتح هنا. غير واحد.',2.4));
-  }
-
-  /* 7: النهاية */
-  else if(n===7){
-    setDrone(.02,120);
-    buildCorridor(26,styles[7],[
-      {s:-1,z:-6,n:102},{s:1,z:-9,n:104},{s:-1,z:-12,n:103},
-      {s:1,z:-15,n:106},{s:-1,z:-18,n:105},{s:1,z:-21,n:108}
-    ]);
-    buildElevator(-26,{mode:'final'}); ELV.open();
-    if(interactables.length) interactables[interactables.length-1].enabled=false;
-    const P=makePainting(-1.46,1.75,-22,Math.PI/2); P.set(3);
-    const e7={seen:false};
-    interactables.push({x:-1.46,y:1.75,z:-22,r:2.0,prompt:'بصّي على الصورة',fn:()=>{
-      if(e7.seen)return; e7.seen=true; frozen=true; sfxWhisper();
-      const c=mkCanvas(640,440); drawPainting(c,3);
-      openNote(c,'العيلة واقفة قصاد الفندق… وانتِ واقفة معاهم.');
-      noteOnClose=()=>{ sched(1800,async()=>{
-        await fade(1,2.2); setDrone(0,80); stopLoops();
-        await sleep(2400); sfxDing(); await sleep(1200);
-        fadeEl.style.transitionDuration='0s'; fadeEl.style.opacity=0; fadeBlack=false;
-        gameOver=true; try{document.exitPointerLock();}catch(e){}
-        endEl.style.display='flex'; }); };
-    }});
-    player.x=0; player.z=-24.7; yaw=Math.PI; pitch=0;
-    startAt(1800,()=>say('…ده الممر بتاع الفندق.',2.4));
-    startAt(5000,()=>say('بس هادي. وفاضي. ومفيش صوت… حتى خطواتي بقت همس.',3.4));
-    obj('فيه صورة على الحيط قصادك… بصّي عليها');
-  }
+  if(n===0)buildLobby(); else if(n===1)buildFloor12(); else buildFloor13();
 }
 
-/* تريجرز */
-function addTrigger(x1,x2,z1,z2,fn,once=true){ triggers.push({x1:Math.min(x1,x2),x2:Math.max(x1,x2),z1:Math.min(z1,z2),z2:Math.max(z1,z2),fn,once,prev:false}); }
-function updateTriggers(){
-  for(const tr of triggers){
-    const inT=player.x>tr.x1-.3&&player.x<tr.x2+.3&&player.z>tr.z1-.3&&player.z<tr.z2+.3;
-    if(inT&&!tr.prev){ tr.prev=true; if(tr.once){ const i=triggers.indexOf(tr); if(i>=0)triggers.splice(i,1); } tr.fn(); }
-    else if(!inT) tr.prev=false;
-  }
+/* ---- المستوى ٠: اللوبي ---- */
+function buildLobby(){
+  const L=13;
+  const cor=buildCorridor(L,{fog:0x0b0906,fd:.055,wA:'#4e4230',wB:'#443828',dam:'#544430',cA:'#38301f',cB:'#221407',hemi:0x35301f,hemiI:.4},[
+    {s:1,z:-3,n:101},{s:-1,z:-5.5,n:102},{s:1,z:-8,n:103},{s:-1,z:-10.5,n:104}
+  ]);
+  box(3.3,3.25,.16,0,1.6,.1,cor.wmat);
+  // باب الدخول وراك (مقفول من برّه)
+  const dm=std(0x2c2115,{map:tx(texDoor('#2c2115','rgba(0,0,0,.65)'))});
+  [-1,1].forEach(s=>{ const leaf=new THREE.Mesh(new THREE.BoxGeometry(.55,2.1,.07),dm); leaf.position.set(s*.28,1.05,-.01); world.add(leaf); });
+  const hd=new THREE.Mesh(new THREE.SphereGeometry(.035,10,8),std(0xa89050,{metalness:.7,roughness:.3})); hd.position.set(0,1.05,-.06); world.add(hd);
+  interactables.push({x:0,y:1.2,z:-.2,r:2.4,prompt:'باب الدخول',fn:()=>{ sfxKnock(.2); say('مقفول من برّه… زي ما يكون مفيش «برّه» أصلًا.',2.4); }});
+  // مكتب الاستقبال
+  const wmat=std(0xffffff,{map:tx(texWood('#4a3520','rgba(0,0,0,.5)'))});
+  box(1.05,1.0,.55,.95,.5,-4.6,wmat);
+  box(1.15,.07,.65,.95,1.02,-4.6,std(0x3a2a18));
+  const paperC=texPaper();
+  plane(.3,.4,.95,1.06,-4.6,new THREE.MeshStandardMaterial({map:tx(paperC),roughness:.9}),-Math.PI/2);
+  interactables.push({x:.95,y:1.1,z:-4.6,r:2.1,prompt:'ورقة الاستقبال',fn:()=>{
+    sfxClick(); openNote(paperC,'الاستقبال: «غرفتك ١٢٠٧ — الدور ١٢.» // ومن ورا الورقة بخط تاني بالإنجليزي: «Don\'t take the 13th floor.»');
+    noteOnClose=()=>{ obj('روحي للمصعد في آخر الممر'); say('«متحطيش رجلك على الدور التلاتاشر»… يعني فيه دور تلاتاشر؟',3); };
+  }});
+  makeSuitcase(.95,-1.9,.3);
+  addSconce(1,-3.2,0xffd9a0,.6); addSconce(-1,-7,0xffd9a0,.5); addSconce(1,-10.8,0xffd9a0,.55);
+  buildElevator(-13,{mode:'intro',call:true});
+  triggers.push({x:0,z:-14.2,r:.9,fn:()=>{ say('جوه المصعد… لوحة الأزرار. مفيش غير ١٢ اللي ليه نور.',2.8); obj('اختاري الدور من اللوحة'); }});
+  triggers.push({x:0,z:-8,r:1.8,fn:()=>{ sfxWhisper(); shake=.12; say('النور هنا بيغمّي… ببطء.',2.2); }});
+  player.x=0; player.z=-1.1; yaw=0; pitch=0;
+  setDrone(.05,180);
+  startAt(1400,()=>say('…فين أنا؟',2));
+  startAt(5200,()=>say('ريحة غبار… وكل حاجة شغّالة زي إن الفندق لسه بيستقبل نزل.',3.2));
+  startAt(9500,()=>{ sfxKnock(.14,-.4); say('سمّعتِ تخبطة… بعيدة. ولا قريبة.',2.4); });
+  startAt(7500,()=>lbEl.classList.remove('on'));
+  obj('صحيتي في فندق فاضي… لاقي أي حاجة تفيدك');
 }
 
-/* رحلات المصعد */
+/* ---- رحلة المصعد للأول مرة ---- */
 async function startRideIntro(){
-  frozen=true; lbEl.classList.add('on'); startHum();
-  ELV.close(); await sleep(1900);
-  for(const n of ['٥','٦','٧','٨','٩','١٠','١١']){ showFloor(n); sfxClick(); await sleep(720); }
-  showFloor('١٢'); sfxDing(); await sleep(1500);
-  say('…ليه مش واقف؟',1.6); await sleep(1500);
-  stopHum(); showFloor('١٣',true,false); sfxDing(true); shake=.8; sfxStatic();
+  if(gameOver)return;
+  if(CUR!==0){ sfxKnock(.2); say('مفيش نزول. المكان مش مستعد يسيبك تروحي.',2.6); ELV.open(); return; }
+  frozen=true; hideObj();
+  ELV.close();
+  await sleep(1500);
+  startHum(); shake=.18; showFloor('١٢');
+  sayNow('بيطلع… بس ببطء غريب.',1.8);
   await sleep(2000);
-  gotoLevel(1,'مفيش دور اسمه ١٣ في الفندق ده.');
-}
-async function startRideFinal(){
-  frozen=true; lbEl.classList.add('on'); startHum(); startHeart(110);
-  ELV.close(); await sleep(2000);
-  for(const n of ['١٢','١١','١٠','٩','٨','٧','٦','٥','٤','٣','٢','١']){ showFloor(n); sfxClick(); await sleep(560); }
-  showFloor('…',false); await sleep(1600); stopHeart();
-  showFloor('١٣',true,false); sfxDing(true); shake=1.0;
-  await sleep(2600); stopHum();
-  gotoLevel(7,null);
+  shake=.45; sfxKnock(.3);
+  await sleep(1600);
+  stopHum(); sfxDing();
+  await sleep(800);
+  gotoLevel(1,'الدور ١٢. // فيه ريحة نوم قديم… كأن حد لسه نايم هنا.');
 }
 
-/* ================== الإدخال: كمبيوتر + لمس ================== */
-const keys={};
-addEventListener('keydown',e=>{ keys[e.code]=true; if(e.code==='KeyE')tryInteract();
-  if(e.code==='Escape'&&!document.pointerLockElement&&started&&!gameOver){
-    paused=!paused; pauseEl.style.display=paused?'flex':'none'; } });
-addEventListener('keyup',e=>{ keys[e.code]=false; });
-function tryLock(){ try{ const p=renderer.domElement.requestPointerLock(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
-document.addEventListener('pointerlockchange',()=>{
-  const locked=document.pointerLockElement===renderer.domElement;
-  if(locked){ hadLock=true; paused=false; expectUnlock=false; pauseEl.style.display='none'; }
-  else if(hadLock&&started&&!panelOpen&&!noteOpen&&!gameOver){
-    if(expectUnlock){ expectUnlock=false; return; }
-    paused=true; pauseEl.style.display='flex';
+/* ---- المستوى ١: الدور ١٢ — الألغاز ---- */
+function buildFloor12(){
+  const L=26;
+  let door1213Open=false;
+  const cor=buildCorridor(L,{fog:0x080605,fd:.062,wA:'#54452f',wB:'#463a27',dam:'#4e3d2a',cracks:true,cA:'#3a2a18',cB:'#1f1006',hemiI:.3},[
+    {s:-1,z:-3.5,n:1201},{s:1,z:-5,n:1202},{s:-1,z:-7.5,n:1204},{s:1,z:-8,n:1205},
+    {s:-1,z:-10.5,n:1206},
+    {s:1,z:-11,n:1207,real:true,gate:()=>hasKey,lockedMsg:'مقفولة… ومفيش مفتاح معاك. في حتة ما هنا، بس فين؟',fn:()=>{ obj('ادخلي غرفتك… وبصّي على حاجاتها'); }},
+    {s:-1,z:-14.5,n:1209,real:true},
+    {s:1,z:-15,n:1210},{s:1,z:-18,n:1211},{s:-1,z:-18.5,n:1212},
+    {s:-1,z:-22,n:1213,real:true,gate:()=>door1213Open,lockedMsg:'مقفولة من جوه… وسمّعتِ نَفَس بيئس ورا الباب.',color:0x3a2015,fn:()=>{ obj('بصّي للنُوام'); }},
+    {s:1,z:-24.5,n:1214}
+  ]);
+  // حيطة آخر الممر + مراية
+  box(3.3,3.25,.16,0,1.6,.1,cor.wmat);
+  const mir=new THREE.Mesh(new THREE.PlaneGeometry(1.05,1.95),new THREE.MeshStandardMaterial({color:0x1a1d20,roughness:.18,metalness:.9}));
+  mir.position.set(0,1.32,.008); mir.rotation.y=Math.PI; world.add(mir);
+  interactables.push({x:0,y:1.3,z:-.3,r:2.2,prompt:'بصّي في المراية',fn:()=>{ sfxWhisper(); shake=.15; say('الغبار كتير… بس الحركة اللي وراك في المراية، مكانهاش من الغبار.',3.2); }});
+  // الغرف
+  const r07=buildRoom(1,-11,{suitcase:true,window:true});
+  const r09=buildRoom(-1,-14.5,{sleeper:true});
+  const r13=buildRoom(-1,-22,{light:0xff3524,li:.5,flicker:true,wallA:'#4a2a22',wallB:'#3a2018',carA:'#33150f',carB:'#170605',blk:0x3a1210});
+  // صورة الغرفة ١٢١٣ (بالناس الحمرا)
+  const p3=makePainting(-6.38,1.7,-22,Math.PI/2); p3.set(3);
+  interactables.push({x:-6.1,y:1.6,z:-22,r:2.1,prompt:'بصّي للصورة',fn:()=>{ sfxWhisper(); say('نفس بيت الصورة اللي في الممر… بس الناس الحمرا هنا بتبصّلك.',2.8); }});
+  // نايم ١٢٠٩
+  interactables.push({x:r09.bedX,y:1,z:r09.bedZ,r:2,prompt:'بصّي للنائم',fn:()=>{ sfxBreath(); say('نايم… نَفَسه بطيء جدًا. كإنه بيقول: متصحّينيش.',2.8); }});
+  // الإنارة
+  addSconce(-1,-5,0xffc98a,.55); addSconce(1,-11,0xffc98a,.5); addSconce(-1,-17,0xffc98a,.5); addSconce(1,-23,0xffc98a,.5);
+  // المصعد (واصلة منه)
+  buildElevator(-26,{mode:'intro',call:true});
+  startAt(400,()=>{ ELV.open(); showFloor('١٢'); });
+  player.x=0; player.z=-27.1; yaw=Math.PI; pitch=0;
+  setDrone(.07,150);
+
+  /* --- لغز الصورة: بيتغير لما مبصّيلهوش --- */
+  const painting=makePainting(-1.46,1.72,-6.1,Math.PI/2);
+  let pSeen=false,pChanged=false,pNoticed=false,pDone=false,keyG=null;
+  interactables.push({x:-1.15,y:1.6,z:-6.1,r:2.1,prompt:'بصّي للصورة',fn:()=>{
+    if(!pSeen){ pSeen=true; say('بيت قديم… وأربع عمال بيبنوه. مرسومة بإيد مطنّشة.',2.8);
+      obj('لاقي مفتاح غرفتك ١٢٠٧');
+      sched(3400,()=>say('الصورة عادية… خليها ورا ضهرك وكمّلي.',2.4)); }
+    else if(pChanged&&!pDone) say('…راجل بال أحمر. مكنش في المرة اللي فاتت.',2.4);
+    else say('أربع عمال… وبيت. بس.',1.8);
+  }});
+  triggers.push({x:0,z:-5,r:1.6,fn:()=>{ if(!pSeen) say('في صورة معلّقة على الشمال… عادية. بس خلي بالك منها.',2.6); }});
+
+  /* --- غرفة ١٢٠٧: الصورة والمفكرة --- */
+  const photoCv=drawPhotoSleep();
+  box(.5,.76,.42,5.6,.38,-9.0,std(0xffffff,{map:tx(texWood('#4a3520','rgba(0,0,0,.5)'))}));
+  plane(.26,.2,5.6,.77,-9.0,new THREE.MeshStandardMaterial({map:tx(photoCv),roughness:.85}),-Math.PI/2);
+  let photoRead=false;
+  interactables.push({x:5.6,y:.9,z:-9.0,r:1.8,prompt:'بصّي للصورة',fn:()=>{
+    openNote(photoCv,'صورة لسرير… وحد نايم تحت الغطا. // في الركن مكتوب: ٠٣:١٣. // …السرير ده هو سريرك. والنُوام… مش انتِ.');
+    if(!photoRead){ photoRead=true; noteOnClose=()=>{ clockActive=true; obj('ظبّطي ساعة الكوريدور على ٣:١٣'); say('في ساعة كبيرة على الحيط اليمين في نص الممر… عقرب ساعاتها بيلف.',3); }; }
+  }});
+  const diaryCv=texDiary();
+  plane(.24,.32,4.1,.66,-11.5,new THREE.MeshStandardMaterial({map:tx(diaryCv),roughness:.9}),-Math.PI/2);
+  interactables.push({x:4.1,y:.9,z:-11.5,r:1.8,prompt:'اقرئي المفكرة',fn:()=>{
+    openNote(diaryCv,'«١٣ يوم وأنا مش نايم صح. الساعة اللي في الممر واقفة، وعقرب الدقايق مكسور ومقفول على ١٣ دقيقة — اللي بيلف هو عقرب الساعات بس. // الصورة بتقول الوقت. ظبّطي الساعة عليه… واسمعي الباب.»');
+  }});
+
+  /* --- لغز الساعة --- */
+  const clockCv=mkCanvas(512,512); drawClock(clockCv,12,13);
+  const clockTex=new THREE.CanvasTexture(clockCv); clockTex.encoding=THREE.sRGBEncoding;
+  box(.42,2.3,.68,1.28,1.15,-16.5,std(0xffffff,{map:tx(texWood('#241811','rgba(0,0,0,.6)'))}));
+  plane(.5,.5,1.065,1.78,-16.5,new THREE.MeshStandardMaterial({map:clockTex,roughness:.55}),0,-Math.PI/2);
+  plane(.34,.8,1.065,1.02,-16.5,std(0x0b0806),0,-Math.PI/2);
+  const pendP=new THREE.Group(); pendP.position.set(1.02,1.36,-16.5); world.add(pendP);
+  const pend=new THREE.Mesh(new THREE.BoxGeometry(.035,.55,.035),std(0xb8a45c,{metalness:.6,roughness:.35})); pend.position.y=-.28; pendP.add(pend);
+  const bob=new THREE.Mesh(new THREE.SphereGeometry(.05,10,8),std(0xc8b060,{metalness:.7,roughness:.3})); bob.position.y=-.55; pendP.add(bob);
+  const ARH=['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠','١١','١٢'];
+  let ch=12, clockActive=false, clockSolvedF=false, tickAcc=0;
+  interactables.push({x:1.0,y:1.5,z:-16.5,r:1.9,prompt:'لفّي عقرب الساعات',fn:()=>{
+    if(clockSolvedF){ say('واقفة على ٣:١٣… ومش هتتحرك تاني.',2); return; }
+    if(!clockActive){ say('زجاج متغبر وعقرب الدقايق مكسور على ١٣… لسه مفيش سبب تلمسيها.',2.6); return; }
+    ch=ch%12+1; drawClock(clockCv,ch,13); clockTex.needsUpdate=true; sfxTick(true);
+    if(ch===3) clockSolved();
+    else say(ARH[ch-1]+':١٣ …مش هو.',1.3);
+  }});
+  function clockSolved(){
+    clockSolvedF=true;
+    sfxDing(true); shake=.22; lightScale=.45;
+    sayNow('دقّت… ومش هتقف.',2);
+    sched(1300,()=>{ lightScale=1; });
+    sched(1700,()=>{ startRing(); say('التليفون اللي في الكوريدور… بيرنّ.',2.4); obj('ردي على التليفون'); });
   }
-});
-pauseEl.addEventListener('click',()=>{ paused=false; pauseEl.style.display='none'; if(!IS_TOUCH)tryLock(); });
 
-let dragging=false,lx=0,ly=0;
-addEventListener('mousedown',e=>{ if(!started||gameOver||e.target!==renderer.domElement||document.pointerLockElement)return;
-  dragging=true; lx=e.clientX; ly=e.clientY; });
-addEventListener('mouseup',()=>dragging=false);
-addEventListener('mousemove',e=>{
-  if(!started||gameOver||paused)return;
-  if(document.pointerLockElement===renderer.domElement){
-    yaw-=e.movementX*.0021; pitch=Math.max(-1.35,Math.min(1.35,pitch-e.movementY*.0021));
-  } else if(dragging){
-    yaw-=(e.clientX-lx)*.0032; pitch=Math.max(-1.35,Math.min(1.35,pitch-(e.clientY-ly)*.0032));
-    lx=e.clientX; ly=e.clientY;
+  /* --- التليفون --- */
+  box(.5,.9,.45,-1.22,.45,-17.5,std(0xffffff,{map:tx(texWood('#3a2a18','rgba(0,0,0,.5)'))}));
+  makePhone(-1.22,.9,-17.5,Math.PI/2);
+  let answered=false;
+  interactables.push({x:-1.2,y:1.1,z:-17.5,r:1.9,prompt:'ردي على التليفون',fn:()=>{
+    if(answered){ say('ميت… زي ما كان.',1.6); return; }
+    answered=true; stopRing(); sfxStatic(); speakAr('مكانك ومكانها اتبدل');
+    say('…ألو؟',1.2);
+    say('نَفَس. مش صوت حد بيتكلم… نَفَس بس.',2.4);
+    say('وبعدين همسة واضحة: «الغرفة ١٢١٣… بقالها ١٣ سنة مستنية نومة. الباب بقى مفتوح.»',3.8);
+    sched(9500,()=>{ door1213Open=true; sfxKnock(.45,.3); sayNow('سمّعتِ قفل بيفكّ لوحده… بعيد.',2.4); obj('روحي لغرفة ١٢١٣'); });
+  }});
+
+  /* --- غرفة ١٢١٣: الرعب --- */
+  let scared=false, escFig=null, escAcc=0, idleDone=false;
+  const slIt={x:r13.bedX,y:1,z:r13.bedZ,r:2.3,prompt:'بصّي للنُوام',fn:function(){
+    sfxBreath();
+    say('الغطا بيطلع وينزل مع نَفَس… بطيء جدًا.',2.6);
+    say('ريحة النَفَس… دي ريحتك. بس انتِ واقفة.',2.6);
+    this.prompt='اشيلي الغطا'; this.fn=()=>scare1213();
+    obj('شيلي الغطا');
+  }};
+  interactables.push(slIt);
+  async function scare1213(){
+    if(scared)return; scared=true; frozen=true; lbEl.classList.add('on');
+    startHeart(92);
+    sayNow('……',1);
+    await sleep(1000);
+    sfxWhisper(); shake=.2;
+    anims.push({t:0,dur:1.2,fn:k=>{ r13.sleeper.position.y=.6+Math.sin(k*Math.PI*4)*.025; }});
+    await sleep(1500);
+    sayNow('لأ.',0.8);
+    lightScale=.05; sfxKnock(.9,0); shake=.6;
+    await sleep(800);
+    world.remove(r13.sleeper); sfxBreath();
+    sayNow('السرير فضي.',1.8);
+    stopHeart();
+    await sleep(700);
+    lightScale=.3; startHeart(118); startBreath();
+    flickers.forEach(f=>f.amp=Math.max(f.amp,.45));
+    ELV.close();
+    lbEl.classList.remove('on'); frozen=false;
+    escapeMode=true;
+    obj('اهربي للمصعد — دلوقتي');
+    sayNow('النور بينده. اركضي.',1.6);
+    sched(1200,()=>{ escFig=makeFigure(0,-24.2); say('…في حاجة واقفة بينك وبين المصعد. وبتجي.',2.2); });
   }
-});
 
-let joyId=null,joyOX=0,joyOY=0; const joyVec={x:0,y:0}; let joyRun=false,lookId=null,lookX=0,lookY=0;
-function joyReset(){ joyVec.x=0; joyVec.y=0; joyRun=false; joyId=null;
-  joyKnob.style.transform='translate(0,0)';
-  joyBase.style.left='26px'; joyBase.style.top='auto'; joyBase.style.bottom='26px'; }
-function bindTouch(cnv){
-  cnv.addEventListener('touchstart',e=>{ e.preventDefault(); if(!started||gameOver||paused)return;
-    for(const t of e.changedTouches){
-      if(t.clientX<innerWidth*.45&&joyId===null){ joyId=t.identifier; joyOX=t.clientX; joyOY=t.clientY;
-        joyBase.style.left=(t.clientX-60)+'px'; joyBase.style.top=(t.clientY-60)+'px'; joyBase.style.bottom='auto'; }
-      else if(lookId===null){ lookId=t.identifier; lookX=t.clientX; lookY=t.clientY; } }
-  },{passive:false});
-  cnv.addEventListener('touchmove',e=>{ e.preventDefault(); if(!started||gameOver||paused)return;
-    for(const t of e.changedTouches){
-      if(t.identifier===joyId){
-        let dx=t.clientX-joyOX, dy=t.clientY-joyOY; const d=Math.hypot(dx,dy), max=55;
-        if(d>max){ dx=dx/d*max; dy=dy/d*max; }
-        joyVec.x=dx/max; joyVec.y=dy/max; joyRun=(d/max)>.85;
-        joyKnob.style.transform='translate('+dx+'px,'+dy+'px)';
-      } else if(t.identifier===lookId){
-        yaw-=(t.clientX-lookX)*.0042; pitch=Math.max(-1.35,Math.min(1.35,pitch-(t.clientY-lookY)*.0042));
-        lookX=t.clientX; lookY=t.clientY; } }
-  },{passive:false});
-  const end=e=>{ for(const t of e.changedTouches){
-      if(t.identifier===joyId) joyReset();
-      if(t.identifier===lookId) lookId=null; } };
-  cnv.addEventListener('touchend',end); cnv.addEventListener('touchcancel',end);
-}
-btnE.addEventListener('touchstart',e=>{ e.preventDefault(); tryInteract(); },{passive:false});
-btnPause.addEventListener('touchstart',e=>{ e.preventDefault(); if(!started||gameOver)return;
-  paused=true; pauseEl.style.display='flex'; },{passive:false});
+  startAt(900,()=>say('الدور ١٢. ريحة نوم قديم… كإن حد لسه نايم هنا.',3));
+  startAt(5200,()=>say('أغلب الغرف مقفولة. غرفتك — ١٢٠٧ — على اليمين تحت.',3));
+  obj('روحي لغرفتك — ١٢٠٧');
 
-function tryInteract(){
-  if(!started||gameOver||paused||frozen||panelOpen)return;
-  if(noteOpen){ closeNote(); return; }
-  if(curInter&&curInter.enabled!==false) curInter.fn();
-}
-
-/* ================== الحلقة الرئيسية ================== */
-function collide(px,pz){
-  const r=.32;
-  for(let k=0;k<2;k++)
-  for(const c of colliders){
-    if(c.y1>=PLAYER_H) continue;
-    if(px>c.x1-r&&px<c.x2+r&&pz>c.z1-r&&pz<c.z2+r){
-      const d1=px-(c.x1-r),d2=(c.x2+r)-px,d3=pz-(c.z1-r),d4=(c.z2+r)-pz;
-      const m=Math.min(d1,d2,d3,d4);
-      if(m===d1)px=c.x1-r; else if(m===d2)px=c.x2+r; else if(m===d3)pz=c.z1-r; else pz=c.z2+r;
+  levelTick=(dt,t)=>{
+    // الصورة
+    if(pSeen&&!pChanged){
+      const dx=-1.15-player.x, dz=-6.1-player.z, dd=Math.hypot(dx,dz)||1;
+      const fx=-Math.sin(yaw), fz=-Math.cos(yaw);
+      const facing=(dx*fx+dz*fz)/dd>.15;
+      if(dd>6.5||!facing){ pChanged=true; painting.set(1); sfxWhisper(); }
+    } else if(pChanged&&!pNoticed){
+      const dd=Math.hypot(-1.15-player.x,-6.1-player.z);
+      if(dd<6){ pNoticed=true; sayNow('…في حاجة اتضافت للصورة.',1.8); }
     }
-  }
-  return [px,pz];
+    if(pChanged&&!pDone){
+      const dd=Math.hypot(-1.15-player.x,-6.1-player.z);
+      if(dd<1.9){
+        pDone=true; painting.set(2); sfxWhisper();
+        sayNow('اختفى.',1.1); say('…وساب حاجة على الأرض.',2);
+        keyG=makeKey(-1.05,.03,-5.9,'1207');
+        const kl=new THREE.PointLight(0xc8a86a,.6,2.6,2); kl.position.set(-1.1,1.0,-5.9); world.add(kl);
+        const keyIt={x:-1.05,y:.25,z:-5.9,r:1.7,prompt:'خدّي المفتاح',fn:function(){
+          hasKey=true; world.remove(keyG); world.remove(kl); sfxClick();
+          say('مفتاح نحاسي… منقوش عليه ١٢٠٧.',2.2);
+          obj('افتحي غرفتك ١٢٠٧'); this.enabled=false;
+        }};
+        interactables.push(keyIt);
+      }
+    }
+    // البندول
+    if(clockSolvedF){ pendP.rotation.z=Math.sin(t*3.3)*.24; tickAcc+=dt; if(tickAcc>1.02){ tickAcc=0; sfxTick(); } }
+    // الشكل في وضع الهروب
+    if(escapeMode){
+      if(escFig){
+        const dx=player.x-escFig.position.x, dz=player.z-escFig.position.z, dd=Math.hypot(dx,dz)||1;
+        escFig.lookAt(player.x,0,player.z);
+        if(dd<2.3){ world.remove(escFig); escFig=null; sfxWhisper(); shake=.35; sayNow('…اختفى. متوقفيش.',1.6); }
+        else { escFig.position.x+=dx/dd*dt*1.15; escFig.position.z+=dz/dd*dt*1.15; }
+      }
+      escAcc+=dt; if(escAcc>3.5){ escAcc=0; sfxKnock(.3,(Math.random()-.5)); }
+    }
+    // السكون
+    if(t-lastMove>20&&!idleDone){ idleDone=true; sfxBreath(); say('في نَفَس قريب… مش نَفَسك.',2.4); }
+  };
 }
-function updateInteract(){
-  curInter=null; let best=1e9;
-  const cp=Math.cos(pitch), fx=-Math.sin(yaw)*cp, fy=Math.sin(pitch), fz=-Math.cos(yaw)*cp;
-  for(const it of interactables){
-    if(it.enabled===false)continue;
-    const dx=it.x-player.x, dy=it.y-1.62, dz=it.z-player.z;
-    const d=Math.sqrt(dx*dx+dy*dy+dz*dz);
-    if(d>it.r)continue;
-    const dot=(dx*fx+dy*fy+dz*fz)/(d||1);
-    if(dot<.62)continue;
-    if(d<best){best=d;curInter=it;}
-  }
-  promptTxt.textContent=curInter?curInter.prompt:'';
-  promptEl.classList.toggle('show',!!curInter&&!noteOpen&&!panelOpen&&!paused&&!frozen);
-  btnE.classList.toggle('hot',!!curInter&&!noteOpen&&!panelOpen&&!paused&&!frozen);
+
+/* ---- رحلة المصعد الأخيرة ---- */
+async function startRideFinal(){
+  if(gameOver)return;
+  frozen=true; hideObj(); stopLoops(); lbEl.classList.add('on');
+  ELV.close();
+  await sleep(1600);
+  startHum(); shake=.2; showFloor('١٢');
+  await sleep(1400);
+  showFloor('١٣',true); sfxStatic();
+  sayNow('…مش الدور اللي اخترتيه.',1.8);
+  await sleep(1600);
+  shake=.8; sayNow('المصعد بينزل. مش واقف.',1.6); stopHum();
+  await sleep(1500);
+  shake=.3; sfxWhisper();
+  await sleep(1300);
+  sfxDing(true);
+  await sleep(700);
+  gotoLevel(2,'الدور اللي مفيشوش على أي لوحة… // بقى تحت رجليك.');
 }
-function tick(){
-  requestAnimationFrame(tick);
-  if(!renderer)return;
-  const dt=Math.min(clockT.getDelta(),.05), t=clockT.elapsedTime;
-  if(started&&!gameOver&&frozen&&fadeBlack&&t-blackSince>20){
-    fadeBlack=false; fadeTxt.style.opacity=0;
-    fadeEl.style.transitionDuration='1s'; fadeEl.style.opacity=0;
-    frozen=false; flushStart();
+
+/* ---- المستوى ٢: الدور ١٣ — النهاية ---- */
+function buildFloor13(){
+  const L=30;
+  let door1313Open=false;
+  const F2=['مرّيتي من هنا قبل كده.','الأرقام دي مش أرقام.','ورا الباب ده… مفيش «ورا».'];
+  const cor=buildCorridor(L,{fog:0x0a0404,fd:.078,wA:'#3c2620',wB:'#2e1a16',dam:'#40201a',cracks:true,cA:'#2e1210',cB:'#140507',hemi:0x20100c,hemiI:.24},[
+    {s:1,z:-3.5,n:1301,lines:F2},{s:-1,z:-6,n:1302,lines:F2},{s:1,z:-9,n:1303,lines:F2},
+    {s:-1,z:-12,n:1304,lines:F2},{s:1,z:-15,n:1305,lines:F2},{s:-1,z:-18,n:1306,lines:F2},
+    {s:1,z:-21,n:1307,lines:F2},{s:-1,z:-24,n:1308,lines:F2},{s:1,z:-27,n:1309,lines:F2},
+    {s:-1,z:-1.8,n:1313,real:true,gate:()=>door1313Open,lockedMsg:'مقفولة من جوه… والنَفَس وراها بقى أسرع.',color:0x341a12}
+  ]);
+  box(3.3,3.25,.16,0,1.6,.1,cor.wmat);
+  addSconce(-1,-5,0xff5a40,.45,7); addSconce(1,-11,0xff5a40,.4,7); addSconce(-1,-17,0xff5a40,.42,7); addSconce(1,-23,0xff5a40,.38,7);
+  const doorLight=new THREE.PointLight(0xb02018,.55,5,2); doorLight.position.set(-1.1,2.2,-1.9); world.add(doorLight);
+  flickers.push({L:doorLight,base:.55,sp:11,amp:.5});
+  buildMissingElevator(-30,true,['ورا الأبواب… مفيش مصعد. مفيش حتى بئر ولا حبال. جيتي منين؟','النور الجاي من ورا الحيطة… نور زي النهار. مش منطقي.']);
+  player.x=0; player.z=-28.6; yaw=Math.PI; pitch=0;
+  echoMode=true; setDrone(.11,105);
+  // صورتان بيتغيرون
+  const pA=makePainting(-1.46,1.72,-22,Math.PI/2); pA.set(1);
+  const pB=makePainting(-1.46,1.72,-10.5,Math.PI/2); pB.set(1);
+  // غرفة ١٣١٣
+  const r1313=buildRoom(-1,-1.8,{light:0xff2a1c,li:.5,flicker:true,wallA:'#3a1e16',wallB:'#2c150f',carA:'#2a0f0c',carB:'#120404',blk:0x3a0d08,phone:true,sleeper:true});
+  const p3=makePainting(-6.38,1.7,-1.8,Math.PI/2); p3.set(3);
+  // الظلال
+  let f1=null,f2=null,f3=null,kAcc=0,phAnswered=false,fin=false;
+  triggers.push({x:0,z:-26,r:2.2,fn:()=>{ f1=makeFigure(0,-11); sfxWhisper(); sayNow('…في حد واقف هناك.',1.8); }});
+  triggers.push({x:0,z:-20.5,r:2,fn:()=>{ pA.set(3); }});
+  triggers.push({x:0,z:-19,r:2.2,fn:()=>{ pB.set(3); say('الصورة اللي جاية… الناس الحمرا فيها كترت.',2.6); }});
+  triggers.push({x:0,z:-14,r:2.2,fn:()=>{ if(f1){world.remove(f1);f1=null;} f2=makeFigure(0,-5.5); sfxKnock(.3); sayNow('لسه هناك… أقرب المرة دي.',2); }});
+  triggers.push({x:0,z:-8,r:2.2,fn:()=>{ if(f2){world.remove(f2);f2=null;} f3=makeFigure(-1.25,-1.8); sayNow('واقفة… على باب الغرفة ١٣١٣.',2.2); obj('روحي للغرفة ١٣١٣'); }});
+  triggers.push({x:-2.6,z:-1.8,r:1.3,fn:()=>{
+    const d13=cor.doors.find(d=>d.n===1313); doorSlam(d13.o);
+    sayNow('الباب اتقفل.',1.4);
+    sched(1500,()=>{ startRing(); say('التليفون… على الأرض جنب السرير. بيرنّ.',2.4); obj('ردي على التليفون'); });
+  }});
+  interactables.push({x:-6.1,y:.5,z:-1.2,r:1.9,prompt:'ردي على التليفون',fn:()=>{
+    if(phAnswered){ say('ميت.',1.4); return; }
+    phAnswered=true; stopRing(); sfxStatic(); speakAr('بصي تحت الغطا');
+    say('صوت… مش بيتكلم. بيتنفس في السماعة.',2.2);
+    say('وبعدين جملة واحدة: «وصلتي. بصّي تحت الغطا.»',3);
+    sched(7000,()=>{ say('الغطا… بيتحرك لوحده. بصّي تحته.',2.2); obj('اشيلي الغطا'); });
+  }});
+  const slIt={x:r1313.bedX,y:1,z:r1313.bedZ,r:2.3,prompt:'بصّي للنُوام',fn:function(){
+    if(fin)return;
+    say('النَفَس بيطول… كإن حد بيعدّ لحد ما تشيليه.',2.6);
+    this.prompt='اشيلي الغطا'; this.fn=()=>finale();
+    obj('اشيلي الغطا');
+  }};
+  interactables.push(slIt);
+  async function finale(){
+    if(fin)return; fin=true; frozen=true; lbEl.classList.add('on'); stopRing();
+    startHeart(78); sayNow('……',1);
+    await sleep(900); sfxBreath();
+    const bl=r1313.sleeper.children[0];
+    anims.push({t:0,dur:1.4,fn:k=>{ bl.scale.y=.34+Math.sin(k*Math.PI)*.22; }});
+    await sleep(1700);
+    anims.push({t:0,dur:.5,fn:k=>{ bl.scale.y=.34*(1-k)+.06*k; }});
+    r1313.sleeper.children[1].visible=false; r1313.sleeper.children[2].visible=false;
+    sfxHeart(); sayNow('فاضية.',1.4);
+    await sleep(1300);
+    stopHeart();
+    sayNow('…وراك.',1);
+    const fig=makeFigure(-2.1,-1.8,true);
+    sfxKnock(1); shake=.8; lightScale=.06;
+    await sleep(650);
+    startHeart(142); startBreath();
+    const fp=new THREE.Vector3(-2.1,0,-1.8), tp=new THREE.Vector3(player.x,0,player.z);
+    anims.push({t:0,dur:2.3,fn:k=>{ fig.position.lerpVectors(fp,tp,k*k); fig.lookAt(player.x,1.3,player.z); shake=Math.max(shake,.4); }});
+    await sleep(2250);
+    sfxStatic(); sfxKnock(1.2);
+    stopLoops(); setDrone(0,300);
+    fade(1,.02);
+    await sleep(2600);
+    showEnding();
   }
-  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; a.t+=dt;
-    let k=Math.min(1,a.t/a.dur); k=k*k*(3-2*k); a.fn(k);
-    if(a.t>=a.dur){ anims.splice(i,1); if(a.done)a.done(); } }
-  for(const f of flickers){ f.L.intensity=f.base*(.78+.22*(Math.sin(t*f.sp)*Math.sin(t*f.sp*.37+2)+.4*Math.random()*f.amp))*lightScale; }
-  let spd=0;
-  if(started&&!paused&&!frozen&&!gameOver&&!panelOpen&&!noteOpen){
-    const run=keys['ShiftLeft']||keys['ShiftRight']||joyRun;
-    let mx=0,mz=0;
+  startAt(1300,()=>{ startHeart(54); startBreath(); });
+  startAt(2400,()=>say('الدور اللي مفيشوش على أي لوحة… انتِ واقفة فيه.',3));
+  startAt(9000,()=>{ sfxKnock(.2,.5); say('الخبطات دي… بتزيد ولا بتقرب؟',2.4); });
+  startAt(17000,()=>sfxWhisper());
+  obj('امشي في الممر… لآخره');
+  levelTick=(dt,t)=>{
+    [f1,f2].forEach(f=>{ if(!f)return;
+      f.lookAt(player.x,0,player.z);
+      const dd=Math.hypot(f.position.x-player.x,f.position.z-player.z);
+      if(dd<4.2){ world.remove(f); if(f1===f)f1=null; else f2=null;
+        sfxWhisper(); shake=.3; lightScale=Math.max(.05,lightScale*.5); sched(700,()=>{ lightScale=1; }); }
+    });
+    if(f3){
+      f3.lookAt(player.x,0,player.z);
+      const dd=Math.hypot(f3.position.x-player.x,f3.position.z-player.z);
+      if(dd<2.6){
+        const st=f3.position.clone(), tgt=new THREE.Vector3(-1.55,0,-1.8);
+        const fref=f3;
+        anims.push({t:0,dur:.7,fn:k=>{ fref.position.lerpVectors(st,tgt,k); },done:()=>{ world.remove(fref); }});
+        f3=null; sfxDoor(); door1313Open=true;
+        doorOpen(cor.doors.find(d=>d.n===1313).o,2.2);
+        sayNow('دخلت. …والباب فتح نفسه وراها.',2.4);
+        sched(2700,()=>say('آخر باب في الممر. مفيش غيره.',2.2));
+      }
+    }
+    kAcc+=dt; if(kAcc>7){ kAcc=0; sfxKnock(.18,(Math.random()-.5)); }
+  };
+}
+
+/* ---- النهاية ---- */
+function showEnding(){
+  gameOver=true; frozen=true;
+  try{document.exitPointerLock();}catch(e){}
+  promptEl.classList.remove('show'); subEl.classList.remove('show'); hideObj(); lbEl.classList.remove('on');
+  endEl.style.display='flex'; endEl.style.opacity=0;
+  requestAnimationFrame(()=>{ endEl.style.transition='opacity 2.5s'; endEl.style.opacity=1; });
+}
+
+/* ================== اللاعب والحركة ================== */
+const keys={};
+let moveAmt=0, joyX=0, joyY=0, joyId=null, joyBX=0, joyBY=0, lookId=null, lookLX=0, lookLY=0;
+function tryMove(nx,nz){
+  const R=.3; let okX=true, okZ=true;
+  for(const c of colliders){
+    if(c.y1>1.6)continue;
+    if(nx>c.x1-R&&nx<c.x2+R&&player.z>c.z1-R&&player.z<c.z2+R)okX=false;
+    if(player.x>c.x1-R&&player.x<c.x2+R&&nz>c.z1-R&&nz<c.z2+R)okZ=false;
+  }
+  if(okX)player.x=nx; if(okZ)player.z=nz;
+}
+function updatePlayer(dt){
+  let mx=0,mz=0;
+  if(!IS_TOUCH){
     if(keys['KeyW']||keys['ArrowUp'])mz+=1; if(keys['KeyS']||keys['ArrowDown'])mz-=1;
     if(keys['KeyA']||keys['ArrowLeft'])mx-=1; if(keys['KeyD']||keys['ArrowRight'])mx+=1;
-    if(joyId!==null){ mx=joyVec.x; mz=-joyVec.y; }
-    if(mx||mz){
-      spd=run?4.6:2.25;
-      const l=Math.hypot(mx,mz); mx/=l; mz/=l;
-      const fx=-Math.sin(yaw),fz=-Math.cos(yaw), rx=Math.cos(yaw),rz=-Math.sin(yaw);
-      let nx=player.x+(fx*mz+rx*mx)*spd*dt, nz=player.z+(fz*mz+rz*mx)*spd*dt;
-      [nx,nz]=collide(nx,nz); player.x=nx; player.z=nz;
-      stepAcc+=spd*dt; bobP+=spd*dt*2.5; lastMove=t;
-      if(stepAcc>(run?.5:.72)){ stepAcc=0; sfxStep(run?.5:.34);
-        if(echoMode) sched(380,()=>sfxStep(run?.42:.24,(Math.random()-.5)*.3,.5)); }
+  }else{ mx=joyX; mz=joyY; }
+  const mag=Math.min(1,Math.hypot(mx,mz));
+  const run=(!IS_TOUCH&&(keys['ShiftLeft']||keys['ShiftRight']))||(IS_TOUCH&&mag>.92);
+  if(mag>.06){
+    lastMove=clockT.elapsedTime;
+    const fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);
+    let dx=fx*mz+rx*mx, dz=fz*mz+rz*mx;
+    const l=Math.hypot(dx,dz)||1; dx/=l; dz/=l;
+    const sp=(run?4.3:2.4)*mag;
+    tryMove(player.x+dx*sp*dt, player.z+dz*sp*dt);
+    const moved=sp*dt;
+    stepAcc+=moved; bobP+=moved*2.3;
+    const stepLen=run?1.85:1.4;
+    if(stepAcc>stepLen){ stepAcc=0; sfxStep(run?.38:.3,(Math.random()-.5)*.5,echoMode?.75:1);
+      if(echoMode)sched(300,()=>sfxStep(.14,0,.5)); }
+  }
+  moveAmt+=((mag>.06?1:0)-moveAmt)*Math.min(1,dt*8);
+}
+function interact(){
+  if(!started||paused||gameOver||frozen||panelOpen||noteOpen)return;
+  if(curInter&&curInter.fn)curInter.fn();
+}
+function scanInteract(){
+  if(frozen||paused||gameOver||panelOpen||noteOpen){ curInter=null; promptEl.classList.remove('show'); btnE.classList.remove('hot'); return; }
+  let best=null,bd=1e9;
+  const fx=-Math.sin(yaw)*Math.cos(pitch), fz=-Math.cos(yaw)*Math.cos(pitch);
+  for(const it of interactables){
+    if(it.enabled===false)continue;
+    const dx=it.x-player.x, dz=it.z-player.z, d=Math.hypot(dx,dz);
+    if(d>it.r)continue;
+    if(d>.6){ const dot=(dx*fx+dz*fz)/(d||1); if(dot<.2)continue; }
+    if(d<bd){bd=d;best=it;}
+  }
+  curInter=best;
+  if(best){ promptTxt.textContent=best.prompt; promptEl.classList.add('show'); btnE.classList.add('hot'); }
+  else{ promptEl.classList.remove('show'); btnE.classList.remove('hot'); }
+}
+
+/* ================== المدخلات ================== */
+const cvEl=$('game');
+addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.repeat)return;
+  if(e.code==='KeyE'){ if(noteOpen){closeNote();return;} if(panelOpen)return; interact(); }
+  if(e.code==='KeyP'&&started&&!gameOver&&!panelOpen&&!noteOpen)togglePause();
+  if(e.code==='Escape'&&paused)togglePause();
+});
+addEventListener('keyup',e=>keys[e.code]=false);
+cvEl.addEventListener('click',()=>{
+  if(started&&!paused&&!gameOver&&!panelOpen&&!noteOpen&&!IS_TOUCH&&document.pointerLockElement!==cvEl){
+    try{ const p=cvEl.requestPointerLock(); if(p&&p.catch)p.catch(()=>{}); }catch(e){}
+  }
+});
+document.addEventListener('pointerlockchange',()=>{
+  const locked=document.pointerLockElement===cvEl;
+  if(!locked&&started&&!gameOver&&!panelOpen&&!noteOpen&&!expectUnlock&&!paused&&!frozen)setPause(true);
+  expectUnlock=false;
+});
+document.addEventListener('mousemove',e=>{
+  if(document.pointerLockElement===cvEl&&!paused){
+    yaw-=e.movementX*.0021;
+    pitch=Math.max(-1.25,Math.min(1.25,pitch-e.movementY*.0021));
+  }
+});
+/* لمس: عصا شمال + نظر يمين */
+cvEl.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  if(!started||paused||gameOver||panelOpen||noteOpen)return;
+  for(const t of e.changedTouches){
+    if(t.clientX<innerWidth*.46&&joyId===null){
+      joyId=t.identifier; joyBX=t.clientX; joyBY=t.clientY;
+      joyBase.style.left=(joyBX-60)+'px'; joyBase.style.top=(joyBY-60)+'px'; joyBase.style.bottom='auto';
+      joyKnob.style.transform='translate(0,0)';
+    } else if(lookId===null){ lookId=t.identifier; lookLX=t.clientX; lookLY=t.clientY; }
+  }
+},{passive:false});
+cvEl.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    if(t.identifier===joyId){
+      let dx=t.clientX-joyBX, dy=t.clientY-joyBY;
+      const l=Math.hypot(dx,dy); if(l>46){ dx*=46/l; dy*=46/l; }
+      joyKnob.style.transform='translate('+dx+'px,'+dy+'px)';
+      joyX=dx/46; joyY=-dy/46;
+    } else if(t.identifier===lookId){
+      yaw-=(t.clientX-lookLX)*.0052;
+      pitch=Math.max(-1.25,Math.min(1.25,pitch-(t.clientY-lookLY)*.0052));
+      lookLX=t.clientX; lookLY=t.clientY;
     }
   }
-  const bobY=Math.sin(bobP)*.042*Math.min(1,spd/2.2)+Math.sin(t*1.3)*.006;
-  camera.position.set(player.x+(Math.random()-.5)*shake*.06,1.62+bobY+(Math.random()-.5)*shake*.05,player.z+(Math.random()-.5)*shake*.06);
-  camera.rotation.set(pitch,yaw,Math.sin(bobP)*.006*Math.min(1,spd/2.2));
-  shake=Math.max(0,shake-dt*1.4);
-  if(started&&!gameOver&&!paused){ updateTriggers(); updateInteract(); if(levelTick)levelTick(dt,t); }
+},{passive:false});
+const endT=e=>{ for(const t of e.changedTouches){
+  if(t.identifier===joyId){ joyId=null; joyX=joyY=0; joyKnob.style.transform='translate(0,0)'; joyBase.style.left='26px'; joyBase.style.top='auto'; joyBase.style.bottom='26px'; }
+  if(t.identifier===lookId)lookId=null; } };
+cvEl.addEventListener('touchend',endT); cvEl.addEventListener('touchcancel',endT);
+btnE.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); if(noteOpen){closeNote();return;} interact(); },{passive:false});
+btnE.addEventListener('click',e=>{ e.stopPropagation(); interact(); });
+btnPause.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); togglePause(); },{passive:false});
+btnPause.addEventListener('click',e=>{ e.stopPropagation(); togglePause(); });
+
+/* ================== الوقفة ================== */
+function setPause(v){
+  if(v&&(frozen||!started||gameOver))return;
+  paused=v; pauseEl.style.display=v?'flex':'none';
+  if(v){
+    if(AC&&AC.state==='running')AC.suspend();
+    if(document.pointerLockElement===cvEl){ expectUnlock=true; try{document.exitPointerLock();}catch(e){} }
+    $('pauseHelp').innerHTML=IS_TOUCH?'المسي الشاشة عشان ترجعي.':'P أو Esc للرجوع — W A S D للحركة و E للتفاعل';
+  } else { if(AC&&AC.state==='suspended')AC.resume(); }
+}
+function togglePause(){ if(!started||gameOver)return; setPause(!paused); }
+pauseEl.addEventListener('click',()=>{
+  setPause(false);
+  if(!IS_TOUCH&&started&&!gameOver){ try{ const p=cvEl.requestPointerLock(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
+});
+
+/* ================== الحلقة الرئيسية ================== */
+function loop(){
+  requestAnimationFrame(loop);
+  const dt=Math.min(.05,clockT.getDelta()), t=clockT.elapsedTime;
+  if(started&&!paused&&!gameOver){
+    if(!frozen&&!panelOpen&&!noteOpen)updatePlayer(dt);
+    for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; a.t+=dt/a.dur; const k=Math.min(1,a.t); a.fn(k);
+      if(k>=1){ anims.splice(i,1); if(a.done)a.done(); } }
+    for(const f of flickers){ const n=Math.sin(t*f.sp)*Math.sin(t*f.sp*.63+1.3);
+      let v=f.base*lightScale*(1+f.amp*.55*n); if(Math.random()<.004)v*=.12; f.L.intensity=v; }
+    if(!frozen)for(const tr of triggers){ if(tr.done)continue;
+      if(Math.hypot(player.x-tr.x,player.z-tr.z)<tr.r){ tr.done=true; tr.fn(); } }
+    if(levelTick)levelTick(dt,t);
+    scanInteract();
+  }
+  const bob=Math.sin(bobP)*.05*moveAmt;
+  camera.position.set(player.x,PLAYER_H+bob,player.z);
+  if(shake>0){ camera.position.x+=(Math.random()-.5)*shake*.14; camera.position.y+=(Math.random()-.5)*shake*.1; shake=Math.max(0,shake-dt*1.1); }
+  camera.rotation.set(pitch,yaw,Math.sin(bobP*.5)*.004*moveAmt);
   renderer.render(scene,camera);
 }
 
-/* ================== البدء ================== */
-function begin(){
+/* ================== التشغيل ================== */
+applyIcon(); init(); loop();
+if('speechSynthesis' in window){ try{ speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices(); }catch(e){} }
+titleEl.addEventListener('click',()=>{
   if(started)return; started=true;
   try{ initAudio(); if(AC.state==='suspended')AC.resume(); }catch(e){}
-  setDrone(.05,150);
-  titleEl.style.opacity=0; setTimeout(()=>titleEl.style.display='none',950);
-  fadeEl.style.transitionDuration='1.6s'; fadeEl.style.opacity=0; fadeBlack=false;
-  frozen=false;
-  if(IS_TOUCH){ try{ if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen(); }catch(e){} }
-  else tryLock();
-  sched(1800,()=>say('…فين أنا؟',2.2));
-  sched(4400,()=>say('مش فاكرة إزاي جيت هنا.',2.5));
-  sched(7600,()=>{ say('مفيش صوت… خالص.',2.2); obj('اقرئي الورقة على الترابيزة… وخدي المفتاح'); });
-}
-titleEl.addEventListener('click',begin);
+  titleEl.style.opacity=0; setTimeout(()=>titleEl.style.display='none',1000);
+  lbEl.classList.add('on');
+  gotoLevel(0,'الفندق فاضي… من ١٣ سنة. // وانتِ صحيتي جوه.');
+});
  $('again').addEventListener('click',()=>location.reload());
- $('pauseHelp').innerHTML=IS_TOUCH
- ? 'المسي الشاشة عشان ترجعي للغرفة ١٣'
- : 'اضغطي في أي مكان عشان ترجعي للغرفة ١٣<br>W A S D للحركة — الماوس للنظر — E للتفاعل — Shift للجري';
-
-init(); bindTouch(renderer.domElement); applyIcon(); buildLevel(0); tick();
 </script>
 </body>
 </html>
